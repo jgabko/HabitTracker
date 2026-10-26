@@ -1,75 +1,73 @@
-# Evolução do HabitTracker para Room
+# Processo e decisões do HabitTracker Room
 
-## Como estava o Trabalho 2
+## Autoria individual
 
-A base é o código de [jgabko/HabitTracker](https://github.com/jgabko/HabitTracker), revisão `94924abfd73ec86f385f31c8c2b99b0705964328`.
+O projeto é desenvolvido individualmente por jgabko. Não há um trio: implementação, integração e preparação da documentação concentram-se em um único integrante. Os pontos abaixo descrevem decisões e problemas técnicos verificáveis no projeto, sem atribuir relatos pessoais de depuração que não foram informados.
 
-Os modelos `Habito`, `Recompensa` e `Registro` já existiam. O `AppState` criava listas com `mutableStateListOf`, preenchia exemplos em seu construtor e gerava os IDs com contadores locais. Ao recriar o estado, esses dados voltavam ao início. As rotas de detalhes já recebiam um ID, mas procuravam o item na lista em memória.
+## Trabalho 2 usado como base
 
-Na revisão de origem, as telas de cadastro, listas e detalhes ainda usavam `TelaStub`. A descrição do README anterior antecipava funções que não estavam implementadas nessa revisão. Nesta evolução, as telas relacionadas ao CRUD foram implementadas de fato, preservando o tema, o pacote, a navegação e as classes do projeto.
+A base correta é o projeto completo enviado em `HabitTracker(3).zip`. Ele contém início, hábitos, formulário completo, dois detalhes, foco, progresso, loja e conquistas, perfil, estatísticas, configurações e Sobre.
 
-## O que mudou
+A implementação anterior com Room tinha sido construída sobre outra revisão, mais simples, com telas provisórias. Por isso, a versão nova não apresentava as funcionalidades do ZIP. A integração usa agora o ZIP como base visual e funcional, acrescentando persistência às suas classes e telas.
 
-- Hábitos, recompensas, histórico e perfil passaram a ser armazenados em `habittracker.db`, no armazenamento interno do aplicativo.
-- Os IDs passaram a ser gerados pelo SQLite/Room.
-- As listas consultam o banco ao abrir, por `LaunchedEffect(Unit)` e `carregarDados()`.
-- Cadastro, edição e exclusão chamam os DAOs e recarregam as listas após a operação.
-- Os dois detalhes consultam o banco pelo ID recebido da navegação.
-- A primeira execução começa sem dados; exemplos não são recriados automaticamente.
-- `AppState` passou a ser um `ViewModel`, para que o escopo das gravações não dependa de uma recomposição da interface.
+No Trabalho 2, AppState criava listas com `mutableStateListOf`, IDs por contadores e exemplos em memória. No Trabalho 3, o Room é a fonte persistente. As listas continuam sendo o estado visual do Compose e são atualizadas após a leitura do banco.
 
 ## Entidades e campos
 
-| Entidade | Campos e motivo |
-| --- | --- |
-| `Habito` | ID, nome, categoria, dias da semana, período, atributo e minutos ganhos. Reaproveita o modelo existente e permite editar o agendamento e o ganho. |
-| `Recompensa` | ID, nome e custo em minutos. São os dados apresentados na loja e usados no resgate. |
-| `Registro` | ID, tipo, dia, hábito ou recompensa relacionada e minutos. Preserva as conclusões e os resgates para não perder o histórico ao reabrir. |
-| `Perfil` | ID, saldo e valores dos cinco atributos. Evita manter saldo e progressão apenas na memória. |
+- **Habito** mantém nome, tipo Fazer/Evitar, categoria, emoji, período, dias da semana, minutos por conclusão e última recaída. Esses campos preservam as regras e os formulários do Trabalho 2.
+- **Recompensa** mantém nome, emoji, custo e quantidade de resgates. A edição persiste nome e custo preservando o ID e o contador.
+- **Registro** mantém dia, tipo, referência ao hábito, nome e categoria no momento da atividade, minutos e referência opcional à recompensa. O snapshot preserva o histórico após a exclusão de um cadastro.
+- **Perfil** preserva saldo e preferência de notificações. Campos de ajuste preservam a pontuação de bancos anteriores; novas instalações calculam seus pontos pelo histórico.
 
-Todas têm `@Entity(tableName = "...")` e `@PrimaryKey(autoGenerate = true)` com `id: Int = 0`. No perfil, a aplicação mantém um único registro de ID 1.
-
-`Conversores` transforma os enums e o conjunto de dias em texto e os reconstrói na leitura. Os dias são armazenados em uma ordem estável. O banco exporta o esquema para `app/schemas`.
+Todas possuem `@Entity` e `@PrimaryKey(autoGenerate = true)`, com `id: Int = 0`. IDs explícitos são utilizados somente para o conjunto original de exemplos e para preservar os registros migrados; cadastros comuns recebem IDs do banco.
 
 ## DAOs e consultas
 
-`HabitoDao` e `RecompensaDao` possuem os quatro métodos básicos, todos `suspend`: inserir, buscar todos, atualizar e remover. Também possuem `buscarPorId(id)` e a exclusão de todos os registros, usada somente pela restauração explícita de exemplos.
+HabitoDao e RecompensaDao possuem inserir, buscar todos, atualizar e remover, todos suspend. A busca por ID é usada pelos detalhes recebidos pela navegação. A ordenação por ID crescente preserva a ordem das listas do Trabalho 2.
 
-As listas são ordenadas por ID decrescente, para exibir o cadastro mais recente primeiro. A consulta por ID permite abrir o item certo sem transportar o objeto inteiro pela navegação.
+RegistroDao consulta a conclusão de um hábito no dia para marcar, desmarcar ou registrar recaída sem duplicar créditos. PerfilDao lê e salva o saldo e a preferência. Queries de exclusão de todos os itens são restritas à restauração explícita de exemplos.
 
-`RegistroDao` inclui uma consulta por hábito, dia e tipo de conclusão. Ela permite concluir e desmarcar um hábito sem duplicar a conclusão do mesmo dia. `PerfilDao` lê o perfil e salva o saldo e os atributos.
+Conversores preservam os enums originais e a lista de dias entre domingo 0 e sábado 6.
 
-## Database e execução fora da interface
+## Database Singleton e migração
 
-`AppDatabase` reúne as quatro entidades, expõe seus DAOs e usa versão 1. A instância é criada com `Room.databaseBuilder`, `applicationContext`, `companion object`, `@Volatile` e `synchronized`.
+AppDatabase é uma classe abstrata RoomDatabase com companion object, @Volatile, synchronized e Room.databaseBuilder usando applicationContext.
 
-As ações do `AppState` executam em `viewModelScope.launch(Dispatchers.IO)`. As consultas suspensas de detalhes usam `withContext(Dispatchers.IO)`, mantendo o mesmo requisito de executar fora da thread principal. A interface só é atualizada em `Dispatchers.Main`.
+A versão inicial da base Room já era 1. A integração dos modelos completos exige a versão 2, em vez de manter o número 1 do exemplo inicial do enunciado. A migração 1 para 2 converte categorias, dias e nomes de campos; preserva IDs, saldo e histórico; reconstitui contadores de resgates; e compensa pontos já existentes para evitar dupla contagem. Essa escolha permite atualizar instalações anteriores sem apagar seus dados.
 
-O escopo é ligado ao ciclo de vida do `ViewModel`. Um `Mutex` serializa as ações locais. Transações mantêm juntas as alterações relacionadas, como registrar uma conclusão e atualizar o saldo, ou registrar um resgate e descontar seu custo. Exceções são capturadas com `try/catch`, registradas com `Log.e` e mostradas na tela. Cancelamentos de coroutine são propagados.
+Se o banco anterior não tiver um perfil, a migração cria o marcador do perfil sem semear exemplos sobre os cadastros existentes. Na instalação nova, o conjunto do ZIP é gravado uma única vez. A existência do perfil identifica essa inicialização: uma lista vazia por exclusões não volta a ser preenchida automaticamente.
 
-Ao excluir um hábito ou uma recompensa, as chaves estrangeiras do histórico usam `SET_NULL`: o item sai da lista, mas os lançamentos anteriores e o saldo não desaparecem.
+## Coroutines e tratamento de erros
 
-## Desafios da migração
+As ações do AppState executam em `CoroutineScope(Dispatchers.IO).launch`. O Job do ViewModel mantém o vínculo com o ciclo de vida. Leituras dos detalhes também usam esse formato, dentro de coroutineScope, e aguardam a consulta por join sem bloquear a thread.
 
-1. **Listas reativas e persistência são coisas diferentes.** As listas do Compose foram mantidas para atualizar a tela, mas agora são preenchidas pela leitura do Room. Elas não são a fonte definitiva dos dados.
-2. **IDs não podem reiniciar ao abrir o aplicativo.** Os contadores locais foram substituídos por chaves geradas pelo banco. A edição mantém o ID original.
-3. **Enums e conjuntos precisam de uma representação persistível.** Foram adicionados conversores para preservar os valores dos modelos.
-4. **Gravar e navegar precisam ocorrer na ordem correta.** O formulário só é limpo ou a tela fechada no retorno de sucesso da gravação. Erros mantêm o formulário disponível.
-5. **Persistir somente os dois cadastros deixaria o estado inconsistente.** Histórico, saldo e atributos também passaram a ser gravados.
-6. **Os detalhes não podem depender apenas do cache das listas.** Os dois detalhes fazem uma consulta filtrada ao banco quando abrem e após alterações.
+O banco é acessado em IO; as mudanças do estado visual ocorrem na Main. `try/catch` registra falhas com `Log.e` e apresenta mensagens por Snackbar. CancellationException é propagada. O estado de carregamento é finalizado também em caso de cancelamento.
 
-## Testes e evidências
+O formulário só é limpo, a tela só volta ou a mensagem de sucesso só aparece depois da gravação confirmada. Um indicador de progresso impede novas ações enquanto uma operação está em andamento.
 
-`RoomPersistenciaTest` usa um banco em arquivo, não apenas um banco em memória. Ele verifica CRUD das duas entidades, consultas por ID, conversores, fechamento e reabertura do arquivo e rollback de uma transação que falha.
+## Regras preservadas e consistência
 
-`ConversoresTest` verifica a ida e volta dos enums e dos dias da semana. `CrudInterfaceTest` percorre os formulários de criação, edição e exclusão e gera capturas reais na pasta externa `evidencias` do aplicativo de teste.
+Concluir um hábito grava a atividade e credita seus minutos na mesma transação. O registro guarda o valor creditado, de modo que desmarcar depois de uma edição devolve exatamente aquele valor. Uma recaída remove a conclusão do dia, ajusta o saldo e atualiza a última recaída atomicamente.
 
-O roteiro em [ROTEIRO_DE_EVIDENCIAS.md](ROTEIRO_DE_EVIDENCIAS.md) descreve a demonstração e a gravação do teste com encerramento completo do processo. A execução dos testes de banco não substitui a demonstração de fechar e reabrir o app pela interface.
+Foco mantém a simulação do Trabalho 2: cinco minutos de foco geram um minuto de lazer, e dez minutos geram um ponto de Foco. O resgate desconta o custo, atualiza o contador e registra o evento na mesma transação. Mutex serializa as ações locais.
 
-## Relato dos integrantes
+Estatísticas, calendário, ofensivas, conquistas e nível continuam calculados pelo histórico. Resgates não contam como dias de produtividade nem geram pontos. A exclusão de um cadastro preserva o histórico, como já fazia o modelo do ZIP.
 
-Os nomes, contribuições e dificuldades individuais devem ser registrados pelos próprios integrantes a partir do que ocorreu no desenvolvimento e na apresentação. Essa informação não está no código original nem no enunciado fornecido; não há relatos pessoais atribuídos neste documento.
+## Dificuldades técnicas resolvidas
 
-## Limites desta evolução
+1. **Bases diferentes:** a interface completa do ZIP substitui as telas provisórias da implementação anterior.
+2. **Modelos incompatíveis:** os modelos originais foram adaptados para entidades e os dados antigos receberam migração.
+3. **Estado em memória:** saldo, histórico, resgates e preferências passaram a persistir junto aos cadastros.
+4. **Operações assíncronas:** navegação e limpeza dos formulários passaram a aguardar sucesso.
+5. **Créditos após edição:** a conclusão guarda o valor realmente creditado para desfazer sem inconsistência.
+6. **Demonstração inicial:** os exemplos são gravados uma vez, sem sobrescrever dados ao reabrir.
 
-O banco é local. Não foram adicionados login, servidor, API ou sincronização na nuvem. As telas de foco, progresso, estatísticas e configurações que já eram provisórias não foram transformadas em funcionalidades completas por esta migração. O calendário ainda usa o dia fixo definido no projeto de origem.
+## Validação e evidências
+
+Os resultados efetivamente executados estão em [VALIDACAO.md](VALIDACAO.md). Há testes para CRUD, reabertura de banco em arquivo, migração do esquema anterior e regras integradas do Trabalho 2.
+
+O teste ao vivo de fechar completamente e reabrir o app, os prints e o vídeo continuam necessários. O roteiro está em [ROTEIRO_DE_EVIDENCIAS.md](ROTEIRO_DE_EVIDENCIAS.md). Não há evidências de aparelho apresentadas como se já tivessem sido produzidas.
+
+## Limites mantidos do Trabalho 2
+
+Calendário demonstrativo de 30 dias com hoje no dia 15; foco por passos simulados; notificações apenas como preferência; avatar por emoji. Não foram introduzidos login, servidor ou sincronização na nuvem.

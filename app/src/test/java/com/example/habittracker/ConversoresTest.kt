@@ -1,24 +1,20 @@
 package com.example.habittracker
 
-import com.example.habittracker.dados.*
-import org.junit.Assert.assertEquals
+import com.example.habittracker.data.Conversores
+import com.example.habittracker.model.*
+import org.junit.Assert.*
 import org.junit.Test
 
 class ConversoresTest {
     private val conversores = Conversores()
-
-    @Test fun diasMantemSelecaoSemDependerDaOrdem() {
-        val dias = setOf(DiaDaSemana.SEX, DiaDaSemana.SEG, DiaDaSemana.DOM)
-        val salvo = conversores.diasParaTexto(dias)
-        assertEquals("SEG,SEX,DOM", salvo)
-        assertEquals(dias, conversores.textoParaDias(salvo))
-        assertEquals(emptySet<DiaDaSemana>(), conversores.textoParaDias(""))
+    @Test fun enumsFazemIdaEVolta() {
+        Categoria.entries.forEach { assertEquals(it, conversores.textoParaCategoria(conversores.categoriaParaTexto(it))) }
+        Periodo.entries.forEach { assertEquals(it, conversores.textoParaPeriodo(conversores.periodoParaTexto(it))) }
+        TipoHabito.entries.forEach { assertEquals(it, conversores.textoParaTipoHabito(conversores.tipoHabitoParaTexto(it))) }
+        TipoRegistro.entries.forEach { assertEquals(it, conversores.textoParaRegistro(conversores.registroParaTexto(it))) }
     }
-
-    @Test fun enumsMantemIdentidadeAoSalvarECarregar() {
-        CategoriaHabito.entries.forEach { assertEquals(it, conversores.textoParaCategoria(conversores.categoriaParaTexto(it))) }
-        PeriodoDoDia.entries.forEach { assertEquals(it, conversores.textoParaPeriodo(conversores.periodoParaTexto(it))) }
-        Atributo.entries.forEach { assertEquals(it, conversores.textoParaAtributo(conversores.atributoParaTexto(it))) }
-        TipoRegistro.entries.forEach { assertEquals(it, conversores.textoParaTipo(conversores.tipoParaTexto(it))) }
+    @Test fun diasMantemValoresUnicosEmOrdem() {
+        assertEquals(listOf(0,1,6), conversores.textoParaDias(conversores.diasParaTexto(listOf(6,1,0,1))))
+        assertEquals(emptyList<Int>(), conversores.textoParaDias(""))
     }
 }

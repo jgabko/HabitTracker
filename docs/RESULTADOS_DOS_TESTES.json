@@ -1,0 +1,80 @@
+{
+  "data": "2026-10-27",
+  "origem": "Relatórios XML de :app:testDebugUnitTest da integração do ZIP do Trabalho 2",
+  "totais": {
+    "testes": 12,
+    "falhas": 0,
+    "erros": 0,
+    "ignorados": 0
+  },
+  "classes": [
+    {
+      "classe": "com.example.habittracker.ConversoresTest",
+      "testes": 2,
+      "falhas": 0,
+      "erros": 0,
+      "ignorados": 0,
+      "casos": [
+        "enumsFazemIdaEVolta",
+        "diasMantemValoresUnicosEmOrdem"
+      ]
+    },
+    {
+      "classe": "com.example.habittracker.CrudInterfaceLocalTest",
+      "testes": 1,
+      "falhas": 0,
+      "erros": 0,
+      "ignorados": 0,
+      "casos": [
+        "etapa01CrudPelasTelas"
+      ]
+    },
+    {
+      "classe": "com.example.habittracker.ExampleUnitTest",
+      "testes": 1,
+      "falhas": 0,
+      "erros": 0,
+      "ignorados": 0,
+      "casos": [
+        "addition_isCorrect"
+      ]
+    },
+    {
+      "classe": "com.example.habittracker.IntegracaoTrabalho2Test",
+      "testes": 4,
+      "falhas": 0,
+      "erros": 0,
+      "ignorados": 0,
+      "casos": [
+        "exemplosOriginaisConquistasECalculosSaoPreservados",
+        "conclusaoEdicaoRecaidaFocoEResgateAtualizamBancoESaldo",
+        "crudNasMesmasListasEPersistenciaSemRecriarExemplos",
+        "validacaoNaoGravaNemChamaSucessoEResetEAtomico"
+      ]
+    },
+    {
+      "classe": "com.example.habittracker.MigracaoBancoTest",
+      "testes": 2,
+      "falhas": 0,
+      "erros": 0,
+      "ignorados": 0,
+      "casos": [
+        "migracaoPreservaCadastrosSaldoHistoricoEPontosSemDuplicacao",
+        "migracaoSemPerfilNaoRecriaExemplosNemApagaCadastros"
+      ]
+    },
+    {
+      "classe": "com.example.habittracker.RoomLocalTest",
+      "testes": 2,
+      "falhas": 0,
+      "erros": 0,
+      "ignorados": 0,
+      "casos": [
+        "crudEReaberturaDoBancoEmArquivo",
+        "falhaEmTransacaoDesfazGravacoes"
+      ]
+    }
+  ],
+  "apk_sha256": "0f9ed0b2a4cd24e2ae69d2aa38ab85b8c8a945602d005865f3817ff589263ea1",
+  "dispositivo": "Não executado em aparelho ou emulador"
+}

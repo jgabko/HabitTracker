@@ -1,91 +1,75 @@
-# HabitTracker com Room
+# HabitTracker Room
 
-Evolução do [HabitTracker do Trabalho 2](https://github.com/jgabko/HabitTracker), em Kotlin e Jetpack Compose, com persistência local em SQLite/Room.
+Evolução do **projeto completo do Trabalho 2**, fornecido no arquivo `HabitTracker(3).zip`, com persistência local em SQLite/Room. Projeto individual de **jgabko**.
 
-## Como rodar
+Esta versão mantém as 12 telas, o tema escuro, as cinco abas, as conquistas, o calendário demonstrativo, as estatísticas, o perfil e o foco simulado do ZIP. O Room foi integrado aos mesmos formulários, cartões e regras do Trabalho 2.
 
-Requisitos:
+## Como executar
 
-- Android Studio compatível com Android Gradle Plugin 9.3.2.
-- JDK 25, conforme o arquivo de toolchain já existente na base.
+- Android Studio compatível com AGP 9.3.2 e JDK 25.
 - Android SDK Platform 37.0 e Build Tools 36.0.0.
-- Emulador ou celular Android com API 24 ou superior.
+- Aparelho ou emulador Android API 24 ou superior.
 
-1. Abra a pasta do projeto em **File → Open** no Android Studio.
-2. Configure o JDK do Gradle e instale o SDK pelo SDK Manager, se solicitado.
-3. Aguarde a sincronização. O plugin KSP e o compilador Room já estão configurados.
-4. Conecte um aparelho com depuração USB ou inicie um emulador.
-5. Execute o módulo `app`.
-
-Pelo terminal, com Java e Android SDK configurados:
+1. Abra este repositório no Android Studio.
+2. Selecione o JDK 25 para o Gradle e configure o Android SDK.
+3. Aguarde a sincronização. Room e KSP já estão configurados.
+4. Execute o módulo `app` em um aparelho ou emulador.
 
 ```powershell
 .\gradlew.bat :app:assembleDebug
+.\gradlew.bat :app:testDebugUnitTest
 .\gradlew.bat :app:installDebug
 ```
 
-Em Linux/macOS, use `./gradlew` no lugar de `.\gradlew.bat`.
+Em Linux/macOS, use `./gradlew`.
 
-O banco é criado no primeiro acesso. A primeira execução começa vazia; nenhum cadastro de exemplo é recriado automaticamente.
+## Funcionalidades preservadas e integradas
 
-## Demonstração do CRUD
-
-- **Início → Novo hábito:** cadastro completo, com dias, categoria, período, atributo e minutos.
-- **Início → Ver todos:** lista de hábitos, cadastro rápido, conclusão e exclusão.
-- **Cartão de um hábito:** detalhe consultado pelo ID, edição e remoção.
-- **Loja:** cadastro e lista de recompensas.
-- **Cartão de uma recompensa:** detalhe consultado pelo ID, edição, remoção e resgate quando houver saldo.
-
-Os formulários validam campos vazios e valores numéricos. Uma gravação com erro mantém os dados do formulário e exibe a falha.
-
-## Persistência
-
-O arquivo `habittracker.db` fica no armazenamento interno do aplicativo. Fechar a Activity ou encerrar o processo não deve apagar os dados. Desinstalar o aplicativo ou limpar seu armazenamento apaga o banco local.
-
-O Room é a fonte dos dados. As listas reativas do Compose são uma representação do conteúdo lido do banco e são recarregadas ao entrar nas telas e após gravações.
-
-## Estrutura de dados
-
-| Componente | Responsabilidade |
+| Tela ou fluxo do Trabalho 2 | Integração nesta versão |
 | --- | --- |
-| `Habito` e `HabitoDao` | Cadastro, leitura, edição e exclusão de hábitos; consulta por ID. |
-| `Recompensa` e `RecompensaDao` | Cadastro, leitura, edição e exclusão de recompensas; consulta por ID. |
-| `Registro` e `RegistroDao` | Histórico de conclusões, recaídas, foco e resgates. |
-| `Perfil` e `PerfilDao` | Saldo em minutos e atributos. |
-| `Conversores` | Conversão dos enums e do conjunto de dias para os campos do banco. |
-| `AppDatabase` | Banco Room versão 1, com instância Singleton. |
-| `AppState` | Coroutines em IO, transações, tratamento de erros e atualização da interface na Main. |
+| Início e lista de hábitos | Carregam os hábitos do banco; conclusão altera histórico e saldo em transação. |
+| Novo hábito | Mantém tipo Fazer/Evitar, categoria, dias e período; salva no Room antes de voltar. |
+| Detalhe do hábito | Consulta pelo ID no banco, mantém estatísticas e edição, e permite excluir com confirmação. |
+| Loja e conquistas | Mantém as duas abas; cadastro, exclusão e resgate persistem. |
+| Detalhe da recompensa | Consulta por ID, mantém os dados de resgate e acrescenta edição de nome e custo. |
+| Foco | Mantém a simulação por passos de cinco minutos; uma sessão concluída grava histórico e credita saldo. |
+| Progresso e estatísticas | Usam o histórico carregado do Room para os mesmos cálculos e gráficos do Trabalho 2. |
+| Perfil | Calcula pontos, nível e progresso com o histórico persistido. |
+| Configurações e Sobre | Persistem a preferência simulada de notificações; restauração de exemplos exige confirmação. |
 
-## Documentação e evidências
+O calendário continua sendo o mês demonstrativo de 30 dias com hoje no dia 15. O foco continua simulado e a preferência de notificações não agenda notificações reais, conforme o escopo do Trabalho 2.
 
-- [Processo e decisões](docs/PROCESSO_E_DECISOES.md): origem, mudanças, entidades, queries e desafios técnicos.
-- [Roteiro de demonstração](docs/ROTEIRO_DE_EVIDENCIAS.md): CRUD e teste de encerramento completo do app.
-- [Registro de validação](docs/VALIDACAO.md): comandos executados, resultados e eventuais pendências.
-- Evidências reais da execução ficam em `docs/evidencias`, quando disponíveis.
+## Dados e atualização de instalações anteriores
 
-Os relatos pessoais e as contribuições dos integrantes precisam ser fornecidos por eles; não foram inventados.
+O arquivo continua sendo `habittracker.db`. Na primeira instalação, os exemplos originais são gravados uma única vez. Encerrar o app ou excluir todos os hábitos não recria exemplos. Apenas a restauração confirmada nas configurações substitui os cadastros pelo conjunto inicial.
 
-## Testes
+O banco usa **versão 2**, com migração explícita da versão 1 da implementação simplificada anterior. Isso é necessário porque o ZIP possui campos e categorias que aquela implementação não tinha. A migração preserva IDs, cadastros, saldo, histórico e progressão; não utiliza recriação destrutiva do banco.
+
+O APK usa o mesmo `applicationId` e `versionCode = 2`. Para atualizar mantendo os dados, instale com a mesma assinatura do aplicativo anterior. Dados do Trabalho 2 que existiam somente em memória e já foram perdidos ao encerrar aquele processo não podem ser recuperados do ZIP.
+
+Sem login, servidor, API ou sincronização na nuvem.
+
+## Estrutura
+
+- `model`: as classes originais Habito, Recompensa e Registro adaptadas para Entity; Perfil preserva saldo e preferência.
+- `data`: AppDatabase Singleton, DAOs, conversores, migração e AppState com coroutines IO.
+- `navigation`: rotas e navegação originais do ZIP.
+- `ui`: tema, componentes e telas originais, integrados ao estado persistente.
+
+Os DAOs de hábitos e recompensas têm Insert, Query, Update e Delete suspend, além de consulta filtrada por ID. As listas carregam em `LaunchedEffect(Unit)`. As operações de banco são executadas em `CoroutineScope(Dispatchers.IO).launch`, com cancelamento, transações e tratamento de erros com `try/catch` e `Log.e`.
+
+## Documentação e validação
+
+- [Processo, decisões e autoria individual](docs/PROCESSO_E_DECISOES.md).
+- [Origem dos arquivos e integração das versões](docs/INTEGRACAO_TRABALHO2.md).
+- [Resultados da validação](docs/VALIDACAO.md).
+- [Roteiro de prints, vídeo e persistência](docs/ROTEIRO_DE_EVIDENCIAS.md).
 
 ```powershell
-.\gradlew.bat :app:testDebugUnitTest
+.\gradlew.bat :app:assembleDebugAndroidTest
 .\gradlew.bat :app:connectedDebugAndroidTest
 ```
 
-O segundo comando exige aparelho ou emulador. Os testes instrumentados abrangem:
+O segundo comando exige aparelho ou emulador. No Windows, `scripts/testar-persistencia.ps1` executa o percurso de CRUD nas telas originais, força a parada entre as etapas de persistência e copia as capturas reais para `docs/evidencias`. A opção `-GravarVideo` grava também o CRUD e a persistência com `adb screenrecord`.
 
-- CRUD e consultas por ID dos dois cadastros.
-- Persistência com fechamento e reabertura de um banco em arquivo.
-- Preservação do saldo e do histórico.
-- Rollback de transação.
-- Percurso pela interface com criação, edição e remoção.
-
-Para demonstrar a persistência entre processos, siga o roteiro: cadastrar, forçar a parada do app, reabrir pelo ícone e mostrar o mesmo item. Não limpar os dados entre as etapas.
-
-No Windows, o roteiro automatizado está em `scripts/testar-persistencia.ps1`. Execute `powershell -File scripts/testar-persistencia.ps1 -AdbPath "CAMINHO_DO_ADB"` com um único dispositivo de teste conectado. Ele executa o CRUD pela interface, força a parada do app entre os testes de persistência e copia os prints gerados.
-
-Os testes locais também incluem `RoomLocalTest`, que usa Robolectric e os DAOs gerados pelo Room com banco em arquivo. Esses testes já passaram, mas não substituem a demonstração em dispositivo e seu vídeo; veja o registro de validação.
-
-## Escopo
-
-Sem login, servidor, API ou sincronização na nuvem. Foram preservados o tema e a navegação da base. Foco, progresso, estatísticas e configurações que já eram telas provisórias continuam fora do escopo desta migração. O dia atual ainda é o valor fixo do projeto original.
+**A demonstração no aparelho e seu vídeo ainda precisam ser executados.** Os testes locais e a compilação não substituem essa evidência obrigatória.

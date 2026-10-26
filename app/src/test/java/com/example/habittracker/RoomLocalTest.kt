@@ -1,70 +1,67 @@
 package com.example.habittracker
 
 import android.content.Context
-import androidx.room.Room
 import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
-import com.example.habittracker.dados.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
+import com.example.habittracker.data.*
+import com.example.habittracker.model.*
+import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.UUID
+
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.SQLiteMode
-import java.util.UUID
 
-/** Verifica os DAOs gerados pelo Room no ambiente Android de testes da JVM. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @SQLiteMode(SQLiteMode.Mode.LEGACY)
 class RoomLocalTest {
+    private val contexto: Context = ApplicationProvider.getApplicationContext()
+    private val nome = "local-${UUID.randomUUID()}.db"
     @Test fun crudEReaberturaDoBancoEmArquivo() = runBlocking(Dispatchers.IO) {
-        val contexto: Context = ApplicationProvider.getApplicationContext()
-        val nome = "room-local-${UUID.randomUUID()}.db"
-        fun abrir() = Room.databaseBuilder(contexto, AppDatabase::class.java, nome).build()
-        var banco = abrir()
+        var banco = AppDatabase.criar(contexto, nome)
         try {
-            val habitoId = banco.habitoDao().inserir(Habito(
-                nome = "Persistência", categoria = CategoriaHabito.SAUDE,
-                diasDaSemana = setOf(DiaDaSemana.SEG, DiaDaSemana.SEX),
-                periodo = PeriodoDoDia.MANHA, atributo = Atributo.VITALIDADE, minutosGanho = 10
-            )).toInt()
-            val recompensaId = banco.recompensaDao().inserir(Recompensa(nome = "Pausa", custoMinutos = 20)).toInt()
-            val habito = requireNotNull(banco.habitoDao().buscarPorId(habitoId))
-            val recompensa = requireNotNull(banco.recompensaDao().buscarPorId(recompensaId))
-            banco.habitoDao().atualizar(habito.copy(nome = "Persistência editada"))
-            banco.recompensaDao().atualizar(recompensa.copy(custoMinutos = 30))
-            banco.perfilDao().salvar(Perfil(id = 1, saldoMinutos = 50))
-            banco.registroDao().inserir(Registro(tipo = TipoRegistro.CONCLUSAO, dia = DIA_HOJE, habitoId = habitoId, minutos = 10))
+            val hId = banco.habitoDao().inserir(Habito(nome = "Persistência", tipo = TipoHabito.EVITAR,
+                categoria = Categoria.SAUDE, diasSemana = listOf(1,5), periodo = Periodo.NOITE,
+                minutosRecompensa = 15, ultimaRecaida = 3)).toInt()
+            val rId = banco.recompensaDao().inserir(Recompensa(nome = "Pausa", custoMinutos = 20)).toInt()
+            val h = checkNotNull(banco.habitoDao().buscarPorId(hId))
+            val r = checkNotNull(banco.recompensaDao().buscarPorId(rId))
+            banco.habitoDao().atualizar(h.copy(nome = "Editado"))
+            banco.recompensaDao().atualizar(r.copy(custoMinutos = 30, vezesResgatada = 2))
+            banco.perfilDao().salvar(Perfil(id = 1, saldoMinutos = 50, notificacoesAtivas = false))
+            banco.registroDao().inserir(Registro(dia = 15, tipo = TipoRegistro.CONCLUSAO,
+                habitoId = hId, nomeHabito = h.nome, categoria = h.categoria, minutos = 15))
             banco.close()
-            banco = abrir()
-            assertEquals("Persistência editada", banco.habitoDao().buscarPorId(habitoId)?.nome)
-            assertEquals(setOf(DiaDaSemana.SEG, DiaDaSemana.SEX), banco.habitoDao().buscarTodos().single().diasDaSemana)
+            banco = AppDatabase.criar(contexto, nome)
+            assertEquals("Editado", banco.habitoDao().buscarPorId(hId)?.nome)
+            assertEquals(TipoHabito.EVITAR, banco.habitoDao().buscarPorId(hId)?.tipo)
+            assertEquals(listOf(1,5), banco.habitoDao().buscarTodos().single().diasSemana)
+            assertEquals(3, banco.habitoDao().buscarTodos().single().ultimaRecaida)
             assertEquals(30, banco.recompensaDao().buscarTodos().single().custoMinutos)
+            assertEquals(2, banco.recompensaDao().buscarTodos().single().vezesResgatada)
             assertEquals(50, banco.perfilDao().buscar()?.saldoMinutos)
-            assertNotNull(banco.registroDao().buscarConclusao(habitoId, DIA_HOJE))
-            banco.habitoDao().remover(requireNotNull(banco.habitoDao().buscarPorId(habitoId)))
-            banco.recompensaDao().remover(requireNotNull(banco.recompensaDao().buscarPorId(recompensaId)))
+            assertEquals(false, banco.perfilDao().buscar()?.notificacoesAtivas)
+            banco.habitoDao().remover(checkNotNull(banco.habitoDao().buscarPorId(hId)))
+            banco.recompensaDao().remover(checkNotNull(banco.recompensaDao().buscarPorId(rId)))
             banco.close()
-            banco = abrir()
+            banco = AppDatabase.criar(contexto, nome)
             assertTrue(banco.habitoDao().buscarTodos().isEmpty())
             assertTrue(banco.recompensaDao().buscarTodos().isEmpty())
-            assertNull(banco.registroDao().buscarTodos().single().habitoId)
+            assertEquals("Persistência", banco.registroDao().buscarTodos().single().nomeHabito)
             assertEquals(50, banco.perfilDao().buscar()?.saldoMinutos)
         } finally { banco.close(); contexto.deleteDatabase(nome) }
     }
-
-    @Test fun transacaoComFalhaDesfazGravacoes() = runBlocking(Dispatchers.IO) {
-        val contexto: Context = ApplicationProvider.getApplicationContext()
-        val nome = "rollback-local-${UUID.randomUUID()}.db"
-        val banco = Room.databaseBuilder(contexto, AppDatabase::class.java, nome).build()
+    @Test fun falhaEmTransacaoDesfazGravacoes() = runBlocking(Dispatchers.IO) {
+        val banco = AppDatabase.criar(contexto, nome)
         try {
             try {
                 banco.withTransaction {
-                    banco.recompensaDao().inserir(Recompensa(nome = "Não deve ficar salva", custoMinutos = 5))
-                    error("Falha simulada")
+                    banco.recompensaDao().inserir(Recompensa(nome = "Não gravar", custoMinutos = 5))
+                    error("Rollback")
                 }
             } catch (_: IllegalStateException) { }
             assertTrue(banco.recompensaDao().buscarTodos().isEmpty())

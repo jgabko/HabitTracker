@@ -10,84 +10,110 @@ import org.junit.Test
 import org.junit.runners.MethodSorters
 import java.io.File
 
+/** Percorre as telas originais do ZIP, sem substituir o visual por telas de teste. */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class CrudInterfaceTest {
     @get:Rule val tela = createAndroidComposeRule<MainActivity>()
 
-    private fun aguardarTexto(texto: String) {
-        tela.waitUntil(15_000) { tela.onAllNodesWithText(texto, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+    private fun aguardarBanco() {
+        tela.waitForIdle()
+        tela.waitUntil(30_000) {
+            tela.onAllNodesWithTag("operacao-banco").fetchSemanticsNodes().isEmpty()
+        }
         tela.waitForIdle()
     }
-
-    private fun clicar(texto: String) {
-        aguardarTexto(texto)
-        tela.onNodeWithText(texto).performClick()
+    private fun localizar(texto: String): SemanticsNodeInteraction {
+        aguardarBanco()
+        val seletor = hasText(texto) and !hasSetTextAction()
+        if (tela.onAllNodes(seletor).fetchSemanticsNodes().isEmpty() &&
+            tela.onAllNodes(hasScrollToNodeAction()).fetchSemanticsNodes().isNotEmpty()) {
+            tela.onNode(hasScrollToNodeAction()).performScrollToNode(seletor)
+        }
+        tela.waitUntil(30_000) { tela.onAllNodes(seletor).fetchSemanticsNodes().isNotEmpty() }
+        val node = tela.onNode(seletor)
+        try { node.assertIsDisplayed() } catch (_: AssertionError) { node.performScrollTo() }
+        return node
     }
-
+    private fun clicar(texto: String) { localizar(texto).performClick(); aguardarBanco() }
+    private fun aba(descricao: String) {
+        aguardarBanco()
+        tela.onNodeWithContentDescription(descricao, useUnmergedTree = true).performClick()
+        aguardarBanco()
+    }
     private fun preencher(rotulo: String, valor: String) {
-        tela.onNode(hasSetTextAction() and hasText(rotulo)).performScrollTo().performTextClearance()
+        aguardarBanco()
+        tela.onNode(hasSetTextAction() and hasText(rotulo)).performScrollTo()
+            .performTextClearance()
         tela.onNode(hasSetTextAction() and hasText(rotulo)).performTextInput(valor)
     }
-
     private fun capturar(nome: String) {
-        tela.waitForIdle()
+        aguardarBanco()
         val instrumento = InstrumentationRegistry.getInstrumentation()
         val pasta = File(instrumento.targetContext.getExternalFilesDir(null), "evidencias").apply { mkdirs() }
-        val bitmap = requireNotNull(instrumento.uiAutomation.takeScreenshot())
+        val bitmap = checkNotNull(instrumento.uiAutomation.takeScreenshot())
         File(pasta, nome).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
     }
-
     @Test fun etapa01CrudPelasTelas() {
-        clicar("Novo hábito")
-        preencher("Nome do hábito", "Hábito do teste CRUD")
-        tela.onNodeWithText("Salvar hábito").performScrollTo().performClick()
+        capturar("00-inicio-trabalho2.png")
         clicar("Ver todos")
-        aguardarTexto("Hábito do teste CRUD")
+        clicar("Formulário completo")
+        preencher("Nome do hábito", "Hábito do teste CRUD")
+        clicar("Salvar hábito")
+        localizar("Hábito do teste CRUD").assertExists()
         capturar("01-habito-adicionado.png")
         clicar("Hábito do teste CRUD")
-        clicar("Editar hábito")
         preencher("Nome do hábito", "Hábito editado no Room")
-        tela.onNodeWithText("Salvar alterações").performScrollTo().performClick()
-        aguardarTexto("Hábito editado no Room")
+        clicar("Salvar alterações")
+        localizar("Hábito editado no Room").assertExists()
         capturar("02-habito-editado.png")
-        tela.onNodeWithText("Remover hábito").performScrollTo().performClick()
+        clicar("Remover hábito")
         clicar("Remover")
-        aguardarTexto("Meus hábitos")
-        tela.waitUntil(15_000) { tela.onAllNodesWithText("Hábito editado no Room").fetchSemanticsNodes().isEmpty() }
+        tela.onAllNodesWithText("Hábito editado no Room").assertCountEquals(0)
         capturar("03-habito-removido.png")
         tela.onNodeWithContentDescription("Voltar").performClick()
-
-        clicar("Loja")
+        aba("Loja")
         preencher("Nome da recompensa", "Recompensa do teste CRUD")
         preencher("Custo em minutos", "15")
-        clicar("Adicionar recompensa")
-        aguardarTexto("Recompensa do teste CRUD")
+        clicar("Adicionar")
         clicar("Recompensa do teste CRUD")
-        clicar("Editar recompensa")
         preencher("Nome da recompensa", "Recompensa editada no Room")
         preencher("Custo em minutos", "20")
         clicar("Salvar alterações")
-        aguardarTexto("Recompensa editada no Room")
+        localizar("Recompensa editada no Room").assertExists()
         capturar("04-recompensa-editada.png")
         clicar("Remover recompensa")
         clicar("Remover")
-        aguardarTexto("Adicionar recompensa")
-        tela.waitUntil(15_000) { tela.onAllNodesWithText("Recompensa editada no Room").fetchSemanticsNodes().isEmpty() }
+        tela.onAllNodesWithText("Recompensa editada no Room").assertCountEquals(0)
+        aba("Progresso")
+        capturar("07-progresso-preservado.png")
+        clicar("Ver estatísticas")
+        capturar("10-estatisticas-preservadas.png")
+        tela.onNodeWithContentDescription("Voltar").performClick()
+        aba("Foco")
+        capturar("08-foco-preservado.png")
+        clicar("Iniciar")
+        repeat(5) { clicar("+5 min") }
+        localizar("Sessão concluída!").assertExists()
+        aba("Perfil")
+        capturar("09-perfil-preservado.png")
+        clicar("Configurações")
+        tela.onNode(isToggleable()).performClick()
+        aguardarBanco()
+        clicar("Sobre o app")
+        localizar("Versão 2.0").assertExists()
     }
-
     @Test fun etapa02PrepararPersistencia() {
         clicar("Ver todos")
         preencher("Nome do hábito", "Teste de persistência Room")
-        clicar("Adicionar hábito")
-        aguardarTexto("Teste de persistência Room")
+        clicar("Adicionar")
+        localizar("Teste de persistência Room").assertExists()
         capturar("05-antes-de-fechar.png")
     }
-
-    // Também pode ser executado isoladamente após am force-stop e novo lançamento do app.
+    // Execute isoladamente depois de am force-stop e do novo lançamento.
     @Test fun etapa03VerificarPersistencia() {
         clicar("Ver todos")
-        aguardarTexto("Teste de persistência Room")
+        localizar("Teste de persistência Room").assertExists()
         capturar("06-depois-de-reabrir.png")
     }
 }

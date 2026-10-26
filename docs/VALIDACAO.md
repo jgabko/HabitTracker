@@ -1,36 +1,55 @@
-# Registro de validação
+# Registro de validação da integração
 
 Data: 27 de outubro de 2026.
 
-## Executado com sucesso
+## Resultado final executado
+
+```text
+gradlew.bat :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest
+BUILD SUCCESSFUL in 44s
+79 actionable tasks: 8 executed, 71 up-to-date
+```
+
+O resultado corresponde ao código integrado do ZIP, incluindo a atualização das coroutines, a migração de banco e as telas originais.
 
 | Verificação | Resultado |
 | --- | --- |
-| `:app:assembleDebug` | APK de depuração gerado. |
-| `:app:assembleDebugAndroidTest` | APK dos testes instrumentados compilado. |
-| `:app:testDebugUnitTest` | 5 testes, 0 falhas, 0 erros, 0 testes ignorados. |
-| `ConversoresTest` | 2 testes de conversão dos enums e dos dias. |
-| `RoomLocalTest` | 2 testes com os DAOs gerados pelo Room, em ambiente Android de testes da JVM. |
-| `ExampleUnitTest` | 1 teste já existente na base. |
-| `git diff --check` | Sem erros de espaços em branco. |
+| APK de depuração | Compilado com sucesso. |
+| APK de testes instrumentados | Compilado com sucesso. |
+| Testes locais | 12 executados, 0 falhas, 0 erros, 0 ignorados. |
+| ConversoresTest | 2 testes de enums e dias da semana. |
+| RoomLocalTest | 2 testes de CRUD, persistência em arquivo, histórico e rollback. |
+| MigracaoBancoTest | 2 testes de atualização da base versão 1, com e sem perfil existente. |
+| IntegracaoTrabalho2Test | 4 testes de exemplos, cálculos, CRUD, reabertura, saldo, foco, recaída, resgate, configuração e validação. |
+| CrudInterfaceLocalTest | 1 percurso executado nas telas Compose com Robolectric. |
+| ExampleUnitTest | 1 teste simples já existente na base. |
 
-O teste de Room executado usa um banco em arquivo e confirma que cadastros e edições permanecem após fechar e reabrir o banco; que exclusões continuam aplicadas; que saldo e histórico são preservados; e que uma transação com falha desfaz suas gravações.
+O percurso de interface cria, edita e remove hábitos e recompensas; abre progresso e estatísticas; conclui uma sessão simulada de foco; abre perfil, altera a preferência de notificações e verifica a tela Sobre. Ele interage com a Activity, navegação, formulários e DAOs reais do projeto no ambiente Android simulado do Robolectric.
 
-## Ambiente de compilação
+Esse percurso JVM verifica ações e a árvore de interface; não gera screenshots nem vídeo e não equivale a uma execução no aparelho. Os detalhes aguardam a consulta assíncrona antes das verificações.
 
-- Windows 10 x64.
-- JDK 25 e Gradle 9.5.0.
-- Android Gradle Plugin 9.3.2.
+O relatório estruturado está em [RESULTADOS_DOS_TESTES.json](RESULTADOS_DOS_TESTES.json).
+
+## Ambiente
+
+- Windows x64.
+- Java 25 do Android Studio, Gradle 9.5.0 e AGP 9.3.2.
 - Android SDK Platform 37.0 e Build Tools 36.0.0.
-- Room 2.8.5, KSP 2.3.12 e Robolectric 4.17.
-- Os testes locais de Room usam o ambiente Android API 35 do Robolectric.
+- Room 2.8.5, KSP 2.3.12 e Robolectric 4.17 com API 35.
+- A compilação emite avisos de APIs de teste e TabRow obsoletas e de acesso nativo no Java; nenhum deles impediu o build.
 
-## Pendente em dispositivo
+## Migração verificada
 
-Os testes instrumentados e o percurso de CRUD pela interface foram compilados, mas não executados em aparelho ou emulador nesta validação. O emulador oficial não iniciou neste Windows porque o componente de sistema `MFPlat.dll` não está disponível. Não havia outro dispositivo disponível.
+Os testes criam um arquivo com o esquema exportado da versão 1 e abrem esse mesmo banco com a nova AppDatabase. A validação do esquema pelo Room e a leitura dos dados confirmam preservação de IDs, nomes, categorias convertidas, dias, saldo, histórico e contadores de resgate. A ausência de perfil no banco antigo não apaga cadastros nem dispara restauração de exemplos.
 
-Assim, **o teste visual de adicionar, encerrar completamente o processo e reabrir o aplicativo ainda precisa ser executado e gravado**. O teste local de banco não foi apresentado como se fosse esse vídeo.
+## Pendente em aparelho
 
-Para concluir as evidências, usar [ROTEIRO_DE_EVIDENCIAS.md](ROTEIRO_DE_EVIDENCIAS.md) e, em um aparelho ou emulador de teste, executar `scripts/testar-persistencia.ps1`. O script instala os APKs de debug, roda o CRUD pela UI, força a parada entre as etapas de persistência, verifica a reabertura e copia as capturas reais para `docs/evidencias`.
+Não havia aparelho Android conectado e o emulador instalado não inicia neste Windows: código 0xC0000135 e ausência de MFPlat.dll. O modo sem janela e sem áudio também havia falhado na verificação do ambiente.
 
-O relato das contribuições e dificuldades pessoais dos integrantes também precisa ser completado por eles, conforme a seção de documentação do enunciado.
+Portanto, ainda precisam ser executados os testes instrumentados em dispositivo e a gravação contínua de cadastrar, encerrar completamente e reabrir o app com o cadastro persistido. Não há prints ou vídeos reais desta execução apresentados como concluídos.
+
+O roteiro está em [ROTEIRO_DE_EVIDENCIAS.md](ROTEIRO_DE_EVIDENCIAS.md); o script `scripts/testar-persistencia.ps1 -GravarVideo` prepara as capturas e gravações com um dispositivo disponível. A sintaxe PowerShell do script foi verificada; sua execução ADB depende desse dispositivo.
+
+## Limite da conferência do enunciado
+
+O banco usa versão 2 para preservar instalações da versão 1; a justificativa está no documento de decisões. O novo repositório é HabitTracker-Room e a autoria é individual. O prazo do Blackboard e a apresentação em sala dependem da turma e do autor. Evidências reais continuam necessárias para completar a entrega.

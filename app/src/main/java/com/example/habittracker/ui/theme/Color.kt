@@ -2,14 +2,24 @@ package com.example.habittracker.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Paleta do Figma (verde-sálvia + coral) adaptada para fundo escuro nativo.
-val VerdeSalvia = Color(0xFFA8C4A2)
-val Coral = Color(0xFFE08A74)
-val FundoEscuro = Color(0xFF121410)
-val Superficie = Color(0xFF1C211C)
-val SuperficieAlta = Color(0xFF2A322C)
-val TextoPrincipal = Color(0xFFE8EDE6)
-val TextoSecundario = Color(0xFFA8B3A8)
-val Contorno = Color(0xFF3D4A40)
-val SobreVerde = Color(0xFF121A14)
-val SobreCoral = Color(0xFF2A1210)
+// Paleta do HabitTracker (versão escura da identidade verde-sálvia + coral do Figma)
+
+// Fundos e superfícies
+val Fundo = Color(0xFF121815)
+val Superficie = Color(0xFF1C2520)
+val SuperficieAlta = Color(0xFF26332C)
+val Contorno = Color(0xFF34443B)
+
+// Cor principal: verde-sálvia
+val Salvia = Color(0xFF8FB996)
+val SalviaEscura = Color(0xFF3F5E47)
+
+// Cor de destaque: coral (botões de ação, ofensivas)
+val Coral = Color(0xFFFF8264)
+val CoralEscuro = Color(0xFF5A2B20)
+
+// Textos e estados
+val TextoPrincipal = Color(0xFFE8EFE9)
+val TextoSecundario = Color(0xFF9FB0A5)
+val Amarelo = Color(0xFFFFD43B)
+val Erro = Color(0xFFFF6B6B)
