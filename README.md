@@ -1,127 +1,91 @@
-# HabitTracker
+# HabitTracker com Room
 
-App Android de hábitos e foco feito em **Kotlin + Jetpack Compose**, para o **Trabalho 2** de Desenvolvimento de Aplicativos Móveis.
-
-**Ideia:** concluir hábitos e fazer sessões de foco gera **minutos de tempo livre**, que podem ser trocados por recompensas na loja. O app tem tema escuro e um avatar com nível e atributos que evoluem com o uso.
-
-**Autor:** João Gabriel Mota Kochla
-
----
+Evolução do [HabitTracker do Trabalho 2](https://github.com/jgabko/HabitTracker), em Kotlin e Jetpack Compose, com persistência local em SQLite/Room.
 
 ## Como rodar
 
-**Requisitos:** Android Studio recente (com JDK embutido) e um emulador ou celular Android com API 24 ou superior.
+Requisitos:
 
-1. Abra a pasta do projeto no Android Studio (**File > Open**) e aguarde o *Gradle Sync* terminar.
-2. Crie ou abra um emulador (Device Manager) ou conecte um celular com depuração USB.
-3. Selecione o módulo `app` e clique em **Run ▶**.
+- Android Studio compatível com Android Gradle Plugin 9.3.2.
+- JDK 25, conforme o arquivo de toolchain já existente na base.
+- Android SDK Platform 37.0 e Build Tools 36.0.0.
+- Emulador ou celular Android com API 24 ou superior.
 
-Pela linha de comando: `./gradlew installDebug` (no Windows, `gradlew.bat installDebug`).
+1. Abra a pasta do projeto em **File → Open** no Android Studio.
+2. Configure o JDK do Gradle e instale o SDK pelo SDK Manager, se solicitado.
+3. Aguarde a sincronização. O plugin KSP e o compilador Room já estão configurados.
+4. Conecte um aparelho com depuração USB ou inicie um emulador.
+5. Execute o módulo `app`.
 
-> **Dados só na memória:** ao fechar o app, tudo volta aos dados de exemplo. Guardar os dados é assunto do próximo trabalho.
+Pelo terminal, com Java e Android SDK configurados:
 
-**Tecnologias:** Kotlin 2.2.10, Jetpack Compose (Material 3, BOM 2026.02.01), Navigation Compose 2.9.3, Android Gradle Plugin 9.3.2.
-
----
-
-## Documentação do processo e das decisões
-
-A documentação, com prints de cada etapa e as respostas da seção 4 do enunciado, está no Google Slides:
-https://drive.google.com/drive/folders/1l4ykIoI8mic6v1ow-0GJpbFkHDKKSnLH?usp=sharing
-
-Resumo das decisões:
-
-- **Tema:** uso apps de hábitos e quis fazer o meu. Hábitos e foco geram minutos de tempo livre (a única "moeda" do app), gastos em recompensas.
-- **Estado único:** a classe `AppState` guarda as listas (`mutableStateListOf`) e as regras (concluir hábito, registrar recaída, resgatar recompensa, registrar sessão de foco). As telas só chamam as funções dela.
-- **Rotas:** o `object Rotas` concentra todas as rotas nomeadas. Os detalhes recebem só o **id** pela rota (`habito/{id}`, `recompensa/{id}`) e buscam o item no `AppState`.
-- **Navegação:** `NavHost`, `Scaffold`, `TopAppBar` e `NavigationBar` ficam juntos em `AppNavigation`. A barra inferior só aparece nas 5 abas; as telas internas têm botão de voltar (`popBackStack()`).
-- **Complexidade extra no Detalhe do Hábito:** calcula ofensiva atual, melhor ofensiva, total de conclusões e taxa dos últimos 7 dias; permite editar o hábito na própria tela; e abre o Foco já com aquele hábito. Escolhi essa tela porque é onde o usuário vê se o hábito está funcionando e age sobre ele.
-- **Simulações (placeholders):** o Foco não usa temporizador real (o botão "+5 min" avança o tempo), o "hoje" é um dia fixo (dia 15 de 30), as notificações são só um Switch, e o avatar é um círculo com emoji.
-
----
-
-## Telas
-
-O app tem **12 telas**: 5 abas na barra inferior e 7 telas internas.
-
-| Tela | Tipo | O que faz |
-|---|---|---|
-| Início | Aba | Saudação, saldo de tempo livre e hábitos de hoje com check. Engrenagem abre Configurações, "Ver todos" abre Meus Hábitos e o botão "+" abre Novo Hábito. |
-| Progresso | Aba | Ofensiva atual, calendário do mês com cor por intensidade, "dias sem" dos hábitos de evitar e botão para Estatísticas. |
-| Foco | Aba | Pomodoro simulado: escolhe hábito e duração (15, 25 ou 45 min), Iniciar, "+5 min", Resetar. Ao completar, registra a sessão e soma tempo livre. |
-| Loja | Aba | Duas abas internas: **Conquistas** (lista de medalhas) e **Loja** (Lista 2: recompensas). |
-| Perfil | Aba | Avatar com emoji, nível e 5 atributos (Força, Vitalidade, Sabedoria, Foco, Disciplina). Botão para Configurações. |
-| Meus Hábitos | Interna | **Lista 1:** hábitos com formulário rápido, Checkbox, lixeira e clique que abre o Detalhe. |
-| Novo Hábito | Interna | Formulário completo: nome, tipo, categoria, dias da semana, período e recompensa em minutos. |
-| Detalhe do Hábito | Interna | Estatísticas calculadas, edição na própria tela, "Registrar recaída" (hábitos de evitar) e "Focar neste hábito". |
-| Detalhe da Recompensa | Interna | Custo, saldo, quanto falta, vezes resgatada e botão Resgatar. |
-| Estatísticas | Interna | Gráfico de barras feito com `Box`, tempo total de foco, média diária, taxa de conclusão e melhor ofensiva. |
-| Configurações | Interna | Switch de notificações (simulado), "Sobre o app" e "Resetar dados de exemplo" com confirmação. |
-| Sobre | Interna | Informações do app. |
-
----
-
-## Requisitos do trabalho (onde está cada um)
-
-| Requisito | Onde |
-|---|---|
-| `NavigationBar` funcionando | `navigation/AppNavigation.kt` (5 abas) |
-| Botões com `navController.navigate(...)` | Todas as telas; nenhum botão sem função |
-| `TopAppBar` com voltar (`popBackStack()`) | `AppNavigation.kt`, em todas as telas internas |
-| `object Rotas` | `navigation/Rotas.kt` |
-| 2 data classes de itens | `model/Habito.kt` e `model/Recompensa.kt` (mais `Registro` para o histórico) |
-| 2 listas com `LazyColumn` + `Card` + `mutableStateListOf` | `HabitosScreen.kt` e a aba Loja em `LojaScreen.kt` (listas em `data/AppState.kt`) |
-| Adicionar por formulário (`OutlinedTextField` + `Button`) | Hábitos (nome e categoria) e Loja (nome e custo, campo numérico) |
-| Remover ou marcar | Lixeira e Checkbox em Hábitos; lixeira e Resgatar na Loja |
-| Detalhe do item certo, via id na rota | `DetalheHabitoScreen.kt` e `DetalheRecompensaScreen.kt` |
-| Detalhe com algo a mais | Detalhe do Hábito (cálculos, edição e navegação ao Foco) |
-| `Row`/`Column`/`Box`, `Scaffold`, `remember`/`mutableStateOf` | Em todo o app |
-
----
-
-## Estrutura do código
-
-```
-app/src/main/java/com/example/habittracker/
-├── MainActivity.kt            # cria o AppState e chama o AppNavigation
-├── model/                     # data classes e enums (Habito, Recompensa, Registro, Atributos)
-├── data/
-│   ├── AppState.kt            # listas reativas, regras e dados de exemplo
-│   └── Conquistas.kt          # lista de medalhas calculada a partir do estado
-├── navigation/
-│   ├── Rotas.kt               # object Rotas
-│   └── AppNavigation.kt       # Scaffold, TopAppBar, NavigationBar e NavHost
-└── ui/
-    ├── theme/                 # paleta escura (darkColorScheme) e tipografia
-    ├── components/            # cartão padrão, barra de progresso, seletor de dias, chips...
-    └── screens/               # as 12 telas
+```powershell
+.\gradlew.bat :app:assembleDebug
+.\gradlew.bat :app:installDebug
 ```
 
----
+Em Linux/macOS, use `./gradlew` no lugar de `.\gradlew.bat`.
 
-## Limitações conhecidas
+O banco é criado no primeiro acesso. A primeira execução começa vazia; nenhum cadastro de exemplo é recriado automaticamente.
 
-- Os dados não sobrevivem ao fechamento do app (previsto no enunciado).
-- O dia "hoje" é fixo e não há botão para avançar o dia.
-- Na tela Meus Hábitos, o Checkbox conclui o hábito **hoje** mesmo que ele não esteja agendado para o dia atual.
-- Notificações, escudos de ofensiva, login e idioma ficaram fora do escopo.
+## Demonstração do CRUD
 
----
+- **Início → Novo hábito:** cadastro completo, com dias, categoria, período, atributo e minutos.
+- **Início → Ver todos:** lista de hábitos, cadastro rápido, conclusão e exclusão.
+- **Cartão de um hábito:** detalhe consultado pelo ID, edição e remoção.
+- **Loja:** cadastro e lista de recompensas.
+- **Cartão de uma recompensa:** detalhe consultado pelo ID, edição, remoção e resgate quando houver saldo.
 
-## Status das etapas
+Os formulários validam campos vazios e valores numéricos. Uma gravação com erro mantém os dados do formulário e exibe a falha.
 
-- [x] Etapa 0 – Projeto e dependência de navegação
-- [x] Etapa 1 – Tema escuro e componentes base
-- [x] Etapa 2 – Modelos e estado
-- [x] Etapa 3 – Navegação
-- [x] Etapa 4 – Início
-- [x] Etapa 5 – Lista de Hábitos
-- [x] Etapa 6 – Novo Hábito
-- [x] Etapa 7 – Detalhe do Hábito
-- [x] Etapa 8 – Loja e Detalhe da Recompensa
-- [x] Etapa 9 – Foco simulado
-- [x] Etapa 10 – Progresso
-- [x] Etapa 11 – Perfil
-- [x] Etapa 12 – Estatísticas
-- [x] Etapa 13 – Configurações
-- [x] Etapa 14 – Testes finais e entrega
+## Persistência
+
+O arquivo `habittracker.db` fica no armazenamento interno do aplicativo. Fechar a Activity ou encerrar o processo não deve apagar os dados. Desinstalar o aplicativo ou limpar seu armazenamento apaga o banco local.
+
+O Room é a fonte dos dados. As listas reativas do Compose são uma representação do conteúdo lido do banco e são recarregadas ao entrar nas telas e após gravações.
+
+## Estrutura de dados
+
+| Componente | Responsabilidade |
+| --- | --- |
+| `Habito` e `HabitoDao` | Cadastro, leitura, edição e exclusão de hábitos; consulta por ID. |
+| `Recompensa` e `RecompensaDao` | Cadastro, leitura, edição e exclusão de recompensas; consulta por ID. |
+| `Registro` e `RegistroDao` | Histórico de conclusões, recaídas, foco e resgates. |
+| `Perfil` e `PerfilDao` | Saldo em minutos e atributos. |
+| `Conversores` | Conversão dos enums e do conjunto de dias para os campos do banco. |
+| `AppDatabase` | Banco Room versão 1, com instância Singleton. |
+| `AppState` | Coroutines em IO, transações, tratamento de erros e atualização da interface na Main. |
+
+## Documentação e evidências
+
+- [Processo e decisões](docs/PROCESSO_E_DECISOES.md): origem, mudanças, entidades, queries e desafios técnicos.
+- [Roteiro de demonstração](docs/ROTEIRO_DE_EVIDENCIAS.md): CRUD e teste de encerramento completo do app.
+- [Registro de validação](docs/VALIDACAO.md): comandos executados, resultados e eventuais pendências.
+- Evidências reais da execução ficam em `docs/evidencias`, quando disponíveis.
+
+Os relatos pessoais e as contribuições dos integrantes precisam ser fornecidos por eles; não foram inventados.
+
+## Testes
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest
+.\gradlew.bat :app:connectedDebugAndroidTest
+```
+
+O segundo comando exige aparelho ou emulador. Os testes instrumentados abrangem:
+
+- CRUD e consultas por ID dos dois cadastros.
+- Persistência com fechamento e reabertura de um banco em arquivo.
+- Preservação do saldo e do histórico.
+- Rollback de transação.
+- Percurso pela interface com criação, edição e remoção.
+
+Para demonstrar a persistência entre processos, siga o roteiro: cadastrar, forçar a parada do app, reabrir pelo ícone e mostrar o mesmo item. Não limpar os dados entre as etapas.
+
+No Windows, o roteiro automatizado está em `scripts/testar-persistencia.ps1`. Execute `powershell -File scripts/testar-persistencia.ps1 -AdbPath "CAMINHO_DO_ADB"` com um único dispositivo de teste conectado. Ele executa o CRUD pela interface, força a parada do app entre os testes de persistência e copia os prints gerados.
+
+Os testes locais também incluem `RoomLocalTest`, que usa Robolectric e os DAOs gerados pelo Room com banco em arquivo. Esses testes já passaram, mas não substituem a demonstração em dispositivo e seu vídeo; veja o registro de validação.
+
+## Escopo
+
+Sem login, servidor, API ou sincronização na nuvem. Foram preservados o tema e a navegação da base. Foco, progresso, estatísticas e configurações que já eram telas provisórias continuam fora do escopo desta migração. O dia atual ainda é o valor fixo do projeto original.

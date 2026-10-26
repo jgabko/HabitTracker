@@ -137,7 +137,7 @@ fun AppNavegacao(
                 )
             }
             composable(Rotas.NOVO_HABITO) {
-                NovoHabitoScreen(onVoltar = { navController.popBackStack() })
+                NovoHabitoScreen(estado = estado, onVoltar = { navController.popBackStack() })
             }
             composable(
                 route = Rotas.DETALHE_HABITO,

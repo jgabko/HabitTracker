@@ -6,12 +6,25 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
-class AppState {
+/**
+ * Mantém as listas reativas da interface. O banco é a fonte dos dados;
+ * as listas são recarregadas após cada transação e ao abrir as telas.
+ */
+class AppState(private val banco: AppDatabase) : ViewModel() {
     val habitos = mutableStateListOf<Habito>()
     val recompensas = mutableStateListOf<Recompensa>()
     val registros = mutableStateListOf<Registro>()
-
     var saldoMinutos by mutableIntStateOf(0)
         private set
     var forca by mutableIntStateOf(0)
@@ -26,14 +39,96 @@ class AppState {
         private set
     var ultimaMensagem by mutableStateOf("")
         private set
+    var erro by mutableStateOf<String?>(null)
+        private set
+    var carregando by mutableStateOf(true)
+        private set
+    var salvando by mutableStateOf(false)
+        private set
+    var versaoDados by mutableIntStateOf(0)
+        private set
 
-    private var proximoHabitoId = 1
-    private var proximaRecompensaId = 1
-    private var proximoRegistroId = 1
+    private val mutex = Mutex()
 
-    init {
-        carregarDadosExemplo()
+    init { recarregar() }
+
+    private data class Dados(
+        val habitos: List<Habito>,
+        val recompensas: List<Recompensa>,
+        val registros: List<Registro>,
+        val perfil: Perfil
+    )
+
+    private suspend fun lerDados() = Dados(
+        banco.habitoDao().buscarTodos(),
+        banco.recompensaDao().buscarTodos(),
+        banco.registroDao().buscarTodos(),
+        banco.perfilDao().buscar() ?: Perfil(id = 1)
+    )
+
+    private fun aplicar(dados: Dados) {
+        habitos.clear()
+        habitos.addAll(dados.habitos)
+        recompensas.clear()
+        recompensas.addAll(dados.recompensas)
+        registros.clear()
+        registros.addAll(dados.registros)
+        saldoMinutos = dados.perfil.saldoMinutos
+        forca = dados.perfil.forca
+        vitalidade = dados.perfil.vitalidade
+        sabedoria = dados.perfil.sabedoria
+        foco = dados.perfil.foco
+        disciplina = dados.perfil.disciplina
+        versaoDados++
     }
+
+    // viewModelScope é um CoroutineScope ligado à vida da tela.
+    // launch(Dispatchers.IO) mantém todas as operações de banco fora da Main.
+    private fun executar(
+        mensagem: String? = null,
+        onSucesso: () -> Unit = {},
+        acao: suspend () -> Unit
+    ): Job = viewModelScope.launch(Dispatchers.IO) {
+        mutex.withLock {
+            withContext(Dispatchers.Main) {
+                salvando = true
+                erro = null
+            }
+            try {
+                banco.withTransaction { acao() }
+                val dados = banco.withTransaction { lerDados() }
+                withContext(Dispatchers.Main) {
+                    aplicar(dados)
+                    if (mensagem != null) {
+                        ultimaMensagem = mensagem
+                        Log.d(TAG_APP, mensagem)
+                    }
+                    onSucesso()
+                }
+            } catch (cancelamento: CancellationException) {
+                throw cancelamento
+            } catch (falha: Exception) {
+                Log.e(TAG_APP, "Falha na operação do banco", falha)
+                withContext(Dispatchers.Main) {
+                    erro = falha.message ?: "Não foi possível acessar os dados."
+                }
+            } finally {
+                withContext(Dispatchers.Main) {
+                    salvando = false
+                    carregando = false
+                }
+            }
+        }
+    }
+
+    fun recarregar(): Job = executar { }
+    suspend fun carregarDados() { recarregar().join() }
+
+    suspend fun buscarHabitoNoBanco(id: Int): Habito? =
+        withContext(Dispatchers.IO) { banco.habitoDao().buscarPorId(id) }
+
+    suspend fun buscarRecompensaNoBanco(id: Int): Recompensa? =
+        withContext(Dispatchers.IO) { banco.recompensaDao().buscarPorId(id) }
 
     fun adicionarHabito(
         nome: String,
@@ -41,165 +136,116 @@ class AppState {
         diasDaSemana: Set<DiaDaSemana> = DiaDaSemana.entries.toSet(),
         periodo: PeriodoDoDia = PeriodoDoDia.MANHA,
         atributo: Atributo = atributoPadrao(categoria),
-        minutosGanho: Int = 10
+        minutosGanho: Int = 10,
+        onSucesso: () -> Unit = {}
     ) {
-        val nomeLimpo = nome.trim()
-        if (nomeLimpo.isEmpty()) {
-            registrarLog("adicionarHabito ignorado: nome vazio")
-            return
+        executar("Hábito salvo.", onSucesso) {
+            require(nome.isNotBlank()) { "Informe o nome do hábito." }
+            require(diasDaSemana.isNotEmpty()) { "Selecione pelo menos um dia." }
+            require(minutosGanho > 0) { "Os minutos devem ser maiores que zero." }
+            banco.habitoDao().inserir(Habito(
+                nome = nome.trim(), categoria = categoria, diasDaSemana = diasDaSemana,
+                periodo = periodo, atributo = atributo, minutosGanho = minutosGanho
+            ))
         }
-        val habito = Habito(
-            id = proximoHabitoId++,
-            nome = nomeLimpo,
-            categoria = categoria,
-            diasDaSemana = diasDaSemana,
-            periodo = periodo,
-            atributo = atributo,
-            minutosGanho = minutosGanho
-        )
-        habitos.add(habito)
-        registrarLog("Hábito adicionado id=${habito.id} nome=${habito.nome}")
     }
 
-    fun removerHabito(id: Int) {
-        val removido = habitos.removeIf { it.id == id }
-        if (removido) {
-            registrarLog("Hábito removido id=$id")
-        } else {
-            registrarLog("removerHabito: id=$id não encontrado")
+    fun atualizarHabito(habito: Habito, onSucesso: () -> Unit = {}) {
+        executar("Hábito atualizado.", onSucesso) {
+            require(habito.nome.isNotBlank() && habito.minutosGanho > 0 && habito.diasDaSemana.isNotEmpty()) {
+                "Preencha um nome, dias e minutos válidos."
+            }
+            check(banco.habitoDao().atualizar(habito.copy(nome = habito.nome.trim())) == 1) {
+                "O hábito não existe mais."
+            }
+        }
+    }
+
+    fun removerHabito(id: Int) { removerHabito(id, {}) }
+    fun removerHabito(id: Int, onSucesso: () -> Unit) {
+        executar("Hábito removido.", onSucesso) {
+            val habito = banco.habitoDao().buscarPorId(id) ?: error("Hábito não encontrado.")
+            banco.habitoDao().remover(habito)
+        }
+    }
+
+    fun adicionarRecompensa(nome: String, custoMinutos: Int, onSucesso: () -> Unit = {}) {
+        executar("Recompensa salva.", onSucesso) {
+            require(nome.isNotBlank() && custoMinutos > 0) { "Informe um nome e um custo maior que zero." }
+            banco.recompensaDao().inserir(Recompensa(nome = nome.trim(), custoMinutos = custoMinutos))
+        }
+    }
+
+    fun atualizarRecompensa(recompensa: Recompensa, onSucesso: () -> Unit = {}) {
+        executar("Recompensa atualizada.", onSucesso) {
+            require(recompensa.nome.isNotBlank() && recompensa.custoMinutos > 0) { "Informe um nome e um custo válido." }
+            check(banco.recompensaDao().atualizar(recompensa.copy(nome = recompensa.nome.trim())) == 1) {
+                "A recompensa não existe mais."
+            }
+        }
+    }
+
+    fun removerRecompensa(id: Int) { removerRecompensa(id, {}) }
+    fun removerRecompensa(id: Int, onSucesso: () -> Unit) {
+        executar("Recompensa removida.", onSucesso) {
+            val recompensa = banco.recompensaDao().buscarPorId(id) ?: error("Recompensa não encontrada.")
+            banco.recompensaDao().remover(recompensa)
         }
     }
 
     fun concluirHabito(id: Int) {
-        val habito = habitos.find { it.id == id }
-        if (habito == null) {
-            registrarLog("concluirHabito: id=$id não encontrado")
-            return
-        }
-        val jaConcluido = concluidoNoDia(id, DIA_HOJE)
-        if (jaConcluido) {
-            registros.removeAll { it.habitoId == id && it.tipo == TipoRegistro.CONCLUSAO && it.dia == DIA_HOJE }
-            saldoMinutos = (saldoMinutos - habito.minutosGanho).coerceAtLeast(0)
-            ajustarAtributo(habito.atributo, -1)
-            registrarLog("Hábito desmarcado id=$id saldo=$saldoMinutos")
-        } else {
-            registros.add(
-                Registro(
-                    id = proximoRegistroId++,
-                    tipo = TipoRegistro.CONCLUSAO,
-                    dia = DIA_HOJE,
-                    habitoId = id,
-                    minutos = habito.minutosGanho
-                )
-            )
-            saldoMinutos += habito.minutosGanho
-            ajustarAtributo(habito.atributo, 1)
-            registrarLog("Hábito concluído id=$id +${habito.minutosGanho}min saldo=$saldoMinutos")
+        executar("Conclusão do hábito atualizada.") {
+            val habito = banco.habitoDao().buscarPorId(id) ?: error("Hábito não encontrado.")
+            val perfil = banco.perfilDao().buscar() ?: Perfil(id = 1)
+            val anterior = banco.registroDao().buscarConclusao(id, DIA_HOJE)
+            val delta = if (anterior == null) 1 else -1
+            val minutos = anterior?.minutos ?: habito.minutosGanho
+            if (anterior == null) {
+                banco.registroDao().inserir(Registro(tipo = TipoRegistro.CONCLUSAO, dia = DIA_HOJE, habitoId = id, minutos = minutos))
+            } else {
+                banco.registroDao().remover(anterior)
+            }
+            banco.perfilDao().salvar(ajustarAtributo(
+                perfil.copy(saldoMinutos = (perfil.saldoMinutos + delta * minutos).coerceAtLeast(0)),
+                habito.atributo, delta
+            ))
         }
     }
 
     fun registrarRecaida(id: Int) {
-        val habito = habitos.find { it.id == id }
-        if (habito == null) {
-            registrarLog("registrarRecaida: id=$id não encontrado")
-            return
+        executar("Recaída registrada.") {
+            check(banco.habitoDao().buscarPorId(id) != null) { "Hábito não encontrado." }
+            banco.registroDao().inserir(Registro(tipo = TipoRegistro.RECAIDA, dia = DIA_HOJE, habitoId = id))
         }
-        registros.add(
-            Registro(
-                id = proximoRegistroId++,
-                tipo = TipoRegistro.RECAIDA,
-                dia = DIA_HOJE,
-                habitoId = id
-            )
-        )
-        registrarLog("Recaída registrada hábito=$id dia=$DIA_HOJE")
     }
 
     fun resgatarRecompensa(id: Int) {
-        val recompensa = recompensas.find { it.id == id }
-        if (recompensa == null) {
-            registrarLog("resgatarRecompensa: id=$id não encontrado")
-            return
-        }
-        if (saldoMinutos < recompensa.custoMinutos) {
-            registrarLog(
-                "Resgate recusado id=$id falta=${recompensa.custoMinutos - saldoMinutos}min"
-            )
-            return
-        }
-        saldoMinutos -= recompensa.custoMinutos
-        registros.add(
-            Registro(
-                id = proximoRegistroId++,
-                tipo = TipoRegistro.RESGATE,
-                dia = DIA_HOJE,
-                recompensaId = id,
-                minutos = recompensa.custoMinutos
-            )
-        )
-        registrarLog("Recompensa resgatada id=$id -${recompensa.custoMinutos}min saldo=$saldoMinutos")
-    }
-
-    fun adicionarRecompensa(nome: String, custoMinutos: Int) {
-        val nomeLimpo = nome.trim()
-        if (nomeLimpo.isEmpty() || custoMinutos <= 0) {
-            registrarLog("adicionarRecompensa ignorada: dados inválidos")
-            return
-        }
-        val recompensa = Recompensa(
-            id = proximaRecompensaId++,
-            nome = nomeLimpo,
-            custoMinutos = custoMinutos
-        )
-        recompensas.add(recompensa)
-        registrarLog("Recompensa adicionada id=${recompensa.id} nome=${recompensa.nome}")
-    }
-
-    fun removerRecompensa(id: Int) {
-        val removida = recompensas.removeIf { it.id == id }
-        if (removida) {
-            registrarLog("Recompensa removida id=$id")
-        } else {
-            registrarLog("removerRecompensa: id=$id não encontrado")
+        executar("Recompensa resgatada.") {
+            val recompensa = banco.recompensaDao().buscarPorId(id) ?: error("Recompensa não encontrada.")
+            val perfil = banco.perfilDao().buscar() ?: Perfil(id = 1)
+            require(perfil.saldoMinutos >= recompensa.custoMinutos) { "Saldo insuficiente para resgatar." }
+            banco.perfilDao().salvar(perfil.copy(saldoMinutos = perfil.saldoMinutos - recompensa.custoMinutos))
+            banco.registroDao().inserir(Registro(tipo = TipoRegistro.RESGATE, dia = DIA_HOJE, recompensaId = id, minutos = recompensa.custoMinutos))
         }
     }
 
     fun registrarSessaoFoco(habitoId: Int, minutos: Int) {
-        val habito = habitos.find { it.id == habitoId }
-        if (habito == null) {
-            registrarLog("registrarSessaoFoco: hábito $habitoId não encontrado")
-            return
-        }
-        if (minutos <= 0) {
-            registrarLog("registrarSessaoFoco ignorada: minutos=$minutos")
-            return
-        }
-        registros.add(
-            Registro(
-                id = proximoRegistroId++,
-                tipo = TipoRegistro.FOCO,
-                dia = DIA_HOJE,
-                habitoId = habitoId,
-                minutos = minutos
-            )
-        )
-        ajustarAtributo(Atributo.FOCO, 1)
-        registrarLog("Sessão de foco ${minutos}min no hábito $habitoId")
-    }
-
-    fun concluidoNoDia(habitoId: Int, dia: Int = DIA_HOJE): Boolean {
-        return registros.any {
-            it.habitoId == habitoId && it.tipo == TipoRegistro.CONCLUSAO && it.dia == dia
+        executar("Sessão de foco registrada.") {
+            require(minutos > 0) { "Informe uma duração válida." }
+            check(banco.habitoDao().buscarPorId(habitoId) != null) { "Hábito não encontrado." }
+            banco.registroDao().inserir(Registro(tipo = TipoRegistro.FOCO, dia = DIA_HOJE, habitoId = habitoId, minutos = minutos))
+            val perfil = banco.perfilDao().buscar() ?: Perfil(id = 1)
+            banco.perfilDao().salvar(perfil.copy(foco = perfil.foco + 1))
         }
     }
 
-    fun habitosDoDia(dia: Int = DIA_HOJE): List<Habito> {
-        val diaSemana = diaDaSemanaDoCalendario(dia)
-        return habitos.filter { diaSemana in it.diasDaSemana }
-    }
+    fun concluidoNoDia(habitoId: Int, dia: Int = DIA_HOJE): Boolean =
+        registros.any { it.habitoId == habitoId && it.tipo == TipoRegistro.CONCLUSAO && it.dia == dia }
+
+    fun habitosDoDia(dia: Int = DIA_HOJE): List<Habito> =
+        habitos.filter { diaDaSemanaDoCalendario(dia) in it.diasDaSemana }
 
     fun habitoPorId(id: Int): Habito? = habitos.find { it.id == id }
-
     fun recompensaPorId(id: Int): Recompensa? = recompensas.find { it.id == id }
 
     fun valorAtributo(atributo: Atributo): Int = when (atributo) {
@@ -210,122 +256,32 @@ class AppState {
         Atributo.DISCIPLINA -> disciplina
     }
 
+    // A carga de exemplos só ocorre por ação explícita, nunca ao abrir o app.
     fun resetarDadosExemplo() {
-        carregarDadosExemplo()
-        registrarLog("Dados de exemplo restaurados saldo=$saldoMinutos")
-    }
-
-    private fun carregarDadosExemplo() {
-        habitos.clear()
-        recompensas.clear()
-        registros.clear()
-        proximoHabitoId = 1
-        proximaRecompensaId = 1
-        proximoRegistroId = 1
-        saldoMinutos = 0
-        forca = 4
-        vitalidade = 6
-        sabedoria = 5
-        foco = 3
-        disciplina = 4
-
-        habitos.addAll(
-            listOf(
-                Habito(1, "Beber 2L de água", CategoriaHabito.SAUDE, diasUteis(), PeriodoDoDia.MANHA, Atributo.VITALIDADE, 10),
-                Habito(2, "Treinar 20 min", CategoriaHabito.MOVIMENTO, diasUteis(), PeriodoDoDia.TARDE, Atributo.FORCA, 15),
-                Habito(3, "Ler 10 páginas", CategoriaHabito.ESTUDO, DiaDaSemana.entries.toSet(), PeriodoDoDia.NOITE, Atributo.SABEDORIA, 10),
-                Habito(4, "Meditar 5 min", CategoriaHabito.MENTE, DiaDaSemana.entries.toSet(), PeriodoDoDia.MANHA, Atributo.FOCO, 10),
-                Habito(5, "Estudar com timer", CategoriaHabito.ROTINA, diasUteis(), PeriodoDoDia.TARDE, Atributo.DISCIPLINA, 15)
-            )
-        )
-        proximoHabitoId = 6
-
-        recompensas.addAll(
-            listOf(
-                Recompensa(1, "Episódio de série", 30),
-                Recompensa(2, "Jogo por 20 min", 20),
-                Recompensa(3, "Passeio curto", 60)
-            )
-        )
-        proximaRecompensaId = 4
-
-        for (dia in 1 until DIA_HOJE) {
-            val idsDoDia = when (dia % 4) {
-                0 -> listOf(1, 2, 3, 4)
-                1 -> listOf(1, 3, 5)
-                2 -> listOf(1, 2, 4)
-                else -> listOf(1, 4, 5)
-            }
-            idsDoDia.forEach { habitoId ->
-                val habito = habitos.first { it.id == habitoId }
-                registros.add(
-                    Registro(
-                        id = proximoRegistroId++,
-                        tipo = TipoRegistro.CONCLUSAO,
-                        dia = dia,
-                        habitoId = habitoId,
-                        minutos = habito.minutosGanho
-                    )
-                )
-                saldoMinutos += habito.minutosGanho
-            }
-            if (dia % 7 == 0) {
-                registros.add(
-                    Registro(
-                        id = proximoRegistroId++,
-                        tipo = TipoRegistro.RECAIDA,
-                        dia = dia,
-                        habitoId = 2
-                    )
-                )
-            }
-            if (dia % 5 == 0) {
-                registros.add(
-                    Registro(
-                        id = proximoRegistroId++,
-                        tipo = TipoRegistro.FOCO,
-                        dia = dia,
-                        habitoId = 5,
-                        minutos = 25
-                    )
-                )
-            }
-        }
-        registrarLog("Exemplos carregados hábitos=${habitos.size} saldo=$saldoMinutos dia=$DIA_HOJE")
-    }
-
-    private fun ajustarAtributo(atributo: Atributo, delta: Int) {
-        when (atributo) {
-            Atributo.FORCA -> forca = (forca + delta).coerceAtLeast(0)
-            Atributo.VITALIDADE -> vitalidade = (vitalidade + delta).coerceAtLeast(0)
-            Atributo.SABEDORIA -> sabedoria = (sabedoria + delta).coerceAtLeast(0)
-            Atributo.FOCO -> foco = (foco + delta).coerceAtLeast(0)
-            Atributo.DISCIPLINA -> disciplina = (disciplina + delta).coerceAtLeast(0)
+        executar("Dados de exemplo restaurados.") {
+            banco.registroDao().removerTodos()
+            banco.habitoDao().removerTodos()
+            banco.recompensaDao().removerTodos()
+            banco.perfilDao().salvar(Perfil(id = 1))
+            banco.habitoDao().inserir(Habito(nome = "Beber água", categoria = CategoriaHabito.SAUDE, diasDaSemana = DiaDaSemana.entries.toSet(), periodo = PeriodoDoDia.MANHA, atributo = Atributo.VITALIDADE, minutosGanho = 10))
+            banco.habitoDao().inserir(Habito(nome = "Ler 10 páginas", categoria = CategoriaHabito.ESTUDO, diasDaSemana = DiaDaSemana.entries.toSet(), periodo = PeriodoDoDia.NOITE, atributo = Atributo.SABEDORIA, minutosGanho = 10))
+            banco.recompensaDao().inserir(Recompensa(nome = "Episódio de série", custoMinutos = 30))
         }
     }
 
-    private fun registrarLog(mensagem: String) {
-        ultimaMensagem = mensagem
-        Log.d(TAG_APP, mensagem)
+    private fun ajustarAtributo(perfil: Perfil, atributo: Atributo, delta: Int): Perfil = when (atributo) {
+        Atributo.FORCA -> perfil.copy(forca = (perfil.forca + delta).coerceAtLeast(0))
+        Atributo.VITALIDADE -> perfil.copy(vitalidade = (perfil.vitalidade + delta).coerceAtLeast(0))
+        Atributo.SABEDORIA -> perfil.copy(sabedoria = (perfil.sabedoria + delta).coerceAtLeast(0))
+        Atributo.FOCO -> perfil.copy(foco = (perfil.foco + delta).coerceAtLeast(0))
+        Atributo.DISCIPLINA -> perfil.copy(disciplina = (perfil.disciplina + delta).coerceAtLeast(0))
     }
 
-    private fun diasUteis(): Set<DiaDaSemana> {
-        return setOf(
-            DiaDaSemana.SEG,
-            DiaDaSemana.TER,
-            DiaDaSemana.QUA,
-            DiaDaSemana.QUI,
-            DiaDaSemana.SEX
-        )
-    }
-
-    private fun atributoPadrao(categoria: CategoriaHabito): Atributo {
-        return when (categoria) {
-            CategoriaHabito.SAUDE -> Atributo.VITALIDADE
-            CategoriaHabito.MOVIMENTO -> Atributo.FORCA
-            CategoriaHabito.MENTE -> Atributo.FOCO
-            CategoriaHabito.ESTUDO -> Atributo.SABEDORIA
-            CategoriaHabito.ROTINA -> Atributo.DISCIPLINA
-        }
+    private fun atributoPadrao(categoria: CategoriaHabito): Atributo = when (categoria) {
+        CategoriaHabito.SAUDE -> Atributo.VITALIDADE
+        CategoriaHabito.MOVIMENTO -> Atributo.FORCA
+        CategoriaHabito.MENTE -> Atributo.FOCO
+        CategoriaHabito.ESTUDO -> Atributo.SABEDORIA
+        CategoriaHabito.ROTINA -> Atributo.DISCIPLINA
     }
 }

@@ -1,5 +1,10 @@
 package com.example.habittracker.dados
 
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
+
 enum class CategoriaHabito(val rotulo: String) {
     SAUDE("Saúde"),
     MOVIMENTO("Movimento"),
@@ -39,8 +44,9 @@ enum class TipoRegistro {
     RESGATE
 }
 
+@Entity(tableName = "habitos")
 data class Habito(
-    val id: Int,
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val nome: String,
     val categoria: CategoriaHabito,
     val diasDaSemana: Set<DiaDaSemana>,
@@ -49,19 +55,39 @@ data class Habito(
     val minutosGanho: Int
 )
 
+@Entity(tableName = "recompensas")
 data class Recompensa(
-    val id: Int,
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val nome: String,
     val custoMinutos: Int
 )
 
+@Entity(
+    tableName = "registros",
+    foreignKeys = [
+        ForeignKey(entity = Habito::class, parentColumns = ["id"], childColumns = ["habitoId"], onDelete = ForeignKey.SET_NULL),
+        ForeignKey(entity = Recompensa::class, parentColumns = ["id"], childColumns = ["recompensaId"], onDelete = ForeignKey.SET_NULL)
+    ],
+    indices = [Index("habitoId"), Index("recompensaId")]
+)
 data class Registro(
-    val id: Int,
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val tipo: TipoRegistro,
     val dia: Int,
     val habitoId: Int? = null,
     val recompensaId: Int? = null,
     val minutos: Int = 0
+)
+
+@Entity(tableName = "perfil")
+data class Perfil(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val saldoMinutos: Int = 0,
+    val forca: Int = 0,
+    val vitalidade: Int = 0,
+    val sabedoria: Int = 0,
+    val foco: Int = 0,
+    val disciplina: Int = 0
 )
 
 const val DIA_HOJE = 15

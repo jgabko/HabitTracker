@@ -17,7 +17,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.habittracker.dados.AppState
 import com.example.habittracker.dados.CategoriaHabito
@@ -25,7 +24,6 @@ import com.example.habittracker.dados.DIA_HOJE
 import com.example.habittracker.dados.DIAS_NO_MES
 import com.example.habittracker.ui.components.CartaoPadrao
 import com.example.habittracker.ui.components.TituloSecao
-import com.example.habittracker.ui.theme.HabitTrackerTheme
 
 @Composable
 fun EstadoDemoScreen(
@@ -138,13 +136,5 @@ fun EstadoDemoScreen(
                 color = MaterialTheme.colorScheme.primary
             )
         }
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF121410, showSystemUi = true)
-@Composable
-private fun EstadoDemoPreview() {
-    HabitTrackerTheme {
-        EstadoDemoScreen(estado = AppState())
     }
 }
