@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,8 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.habittracker.data.AppState
-import com.example.habittracker.model.Atributo
+import com.example.habittracker.viewmodel.*
+import androidx.compose.runtime.collectAsState
+import com.example.habittracker.data.Atributo
 import com.example.habittracker.navigation.Rotas
 import com.example.habittracker.ui.components.BarraProgresso
 import com.example.habittracker.ui.components.BotaoPrincipal
@@ -33,7 +35,9 @@ import com.example.habittracker.ui.components.TituloSecao
  * e botão para as Configurações.
  */
 @Composable
-fun PerfilScreen(navController: NavController, estado: AppState, modifier: Modifier = Modifier) {
+fun PerfilScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -58,7 +62,7 @@ fun PerfilScreen(navController: NavController, estado: AppState, modifier: Modif
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "${estado.pontosTotais() % AppState.PONTOS_POR_NIVEL} / ${AppState.PONTOS_POR_NIVEL} pts para o próximo nível",
+                text = "${estado.pontosTotais() % AppUiState.PONTOS_POR_NIVEL} / ${AppUiState.PONTOS_POR_NIVEL} pts para o próximo nível",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -91,7 +95,7 @@ fun PerfilScreen(navController: NavController, estado: AppState, modifier: Modif
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 // A barra enche até 50 pts (o mesmo valor de um nível)
-                BarraProgresso(progresso = pontos / AppState.PONTOS_POR_NIVEL.toFloat())
+                BarraProgresso(progresso = pontos / AppUiState.PONTOS_POR_NIVEL.toFloat())
             }
         }
 

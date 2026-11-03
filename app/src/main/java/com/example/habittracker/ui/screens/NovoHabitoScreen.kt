@@ -13,16 +13,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.habittracker.data.AppState
-import com.example.habittracker.model.Categoria
-import com.example.habittracker.model.Periodo
-import com.example.habittracker.model.TipoHabito
+import com.example.habittracker.viewmodel.*
+import androidx.compose.runtime.collectAsState
+import com.example.habittracker.data.Categoria
+import com.example.habittracker.data.Periodo
+import com.example.habittracker.data.TipoHabito
 import com.example.habittracker.ui.components.BotaoPrincipal
 import com.example.habittracker.ui.components.BotaoSecundario
 import com.example.habittracker.ui.components.OpcoesChips
@@ -31,19 +29,20 @@ import com.example.habittracker.ui.components.SeletorDiasDaSemana
 
 /**
  * Novo Hábito (Figma criar-habito): formulário completo com nome, tipo, categoria,
- * dias da semana e período. "Salvar" grava no AppState (mesma lista da tela de Hábitos).
+ * dias da semana e período. "Salvar" envia um evento ao ViewModel; a lista observa o Flow do Room.
  */
 @Composable
-fun NovoHabitoScreen(navController: NavController, estado: AppState, modifier: Modifier = Modifier) {
-    var nome by remember { mutableStateOf("") }
-    var tipo by remember { mutableStateOf(TipoHabito.FAZER) }
-    var categoria by remember { mutableStateOf(Categoria.MENTE) }
-    var dias by remember { mutableStateOf(listOf(0, 1, 2, 3, 4, 5, 6)) }
-    var periodo by remember { mutableStateOf(Periodo.MANHA) }
-    var tentouSalvar by remember { mutableStateOf(false) }
-
-    val nomeInvalido = tentouSalvar && nome.isBlank()
-    val diasInvalidos = tentouSalvar && dias.isEmpty()
+fun NovoHabitoScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
+    val form = uiState.formulario
+    val nome = form.nome
+    val tipo = form.tipo
+    val categoria = form.categoria
+    val dias = form.dias
+    val periodo = form.periodo
+    val nomeInvalido = form.nomeInvalido
+    val diasInvalidos = form.diasInvalidos
 
     Column(
         modifier = modifier
@@ -55,7 +54,7 @@ fun NovoHabitoScreen(navController: NavController, estado: AppState, modifier: M
     ) {
         OutlinedTextField(
             value = nome,
-            onValueChange = { nome = it },
+            onValueChange = { viewModel.onNomeChange(it) },
             label = { Text("Nome do hábito") },
             singleLine = true,
             isError = nomeInvalido,
@@ -67,7 +66,7 @@ fun NovoHabitoScreen(navController: NavController, estado: AppState, modifier: M
             OpcoesChips(
                 rotulos = TipoHabito.entries.map { it.rotulo },
                 selecionado = TipoHabito.entries.indexOf(tipo),
-                aoSelecionar = { tipo = TipoHabito.entries[it] }
+                aoSelecionar = { viewModel.onTipoChange(TipoHabito.entries[it]) }
             )
             Text(
                 text = if (tipo == TipoHabito.FAZER) "Algo que você quer fazer todo dia."
@@ -81,7 +80,7 @@ fun NovoHabitoScreen(navController: NavController, estado: AppState, modifier: M
             OpcoesChips(
                 rotulos = Categoria.entries.map { "${it.emoji} ${it.rotulo}" },
                 selecionado = Categoria.entries.indexOf(categoria),
-                aoSelecionar = { categoria = Categoria.entries[it] }
+                aoSelecionar = { viewModel.onCategoriaChange(Categoria.entries[it]) }
             )
         }
 
@@ -89,7 +88,7 @@ fun NovoHabitoScreen(navController: NavController, estado: AppState, modifier: M
             SeletorDiasDaSemana(
                 selecionados = dias,
                 aoAlternar = { dia ->
-                    dias = if (dia in dias) dias - dia else (dias + dia).sorted()
+                    viewModel.onDiaAlternar(dia)
                 }
             )
             if (diasInvalidos) {
@@ -105,26 +104,16 @@ fun NovoHabitoScreen(navController: NavController, estado: AppState, modifier: M
             OpcoesChips(
                 rotulos = Periodo.entries.map { "${it.emoji} ${it.rotulo}" },
                 selecionado = Periodo.entries.indexOf(periodo),
-                aoSelecionar = { periodo = Periodo.entries[it] }
+                aoSelecionar = { viewModel.onPeriodoChange(Periodo.entries[it]) }
             )
         }
 
         BotaoPrincipal(
             texto = "Salvar hábito",
             aoClicar = {
-                tentouSalvar = true
-                if (nome.isNotBlank() && dias.isNotEmpty()) {
-                    estado.adicionarHabito(
-                        nome = nome,
-                        categoria = categoria,
-                        tipo = tipo,
-                        periodo = periodo,
-                        diasSemana = dias,
-                        onSucesso = { navController.popBackStack() }
-                    )
-                }
+                viewModel.onSalvar { navController.popBackStack() }
             }
         )
-        BotaoSecundario(texto = "Cancelar", aoClicar = { navController.popBackStack() })
+        BotaoSecundario(texto = "Cancelar", aoClicar = { viewModel.onCancelarNovo(); navController.popBackStack() })
     }
 }

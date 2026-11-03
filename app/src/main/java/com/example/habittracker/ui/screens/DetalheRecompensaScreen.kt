@@ -13,19 +13,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
-import android.util.Log
 import kotlinx.coroutines.CancellationException
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.habittracker.data.AppState
-import com.example.habittracker.model.Recompensa
+import com.example.habittracker.viewmodel.*
+import androidx.compose.runtime.collectAsState
+import com.example.habittracker.data.Recompensa
 import com.example.habittracker.ui.components.BarraProgresso
 import com.example.habittracker.ui.components.BotaoPrincipal
 import com.example.habittracker.ui.components.BotaoSecundario
@@ -33,39 +30,28 @@ import com.example.habittracker.ui.components.CartaoEstatistica
 import com.example.habittracker.ui.components.CartaoPadrao
 import com.example.habittracker.ui.components.EmojiCirculo
 
-/** O id veio pela rota; a recompensa certa é buscada no AppState. */
+/** O id veio pela rota; a recompensa certa é buscada no AppUiState. */
 @Composable
 fun DetalheRecompensaScreen(
     navController: NavController,
-    estado: AppState,
+    viewModel: RecompensasViewModel,
     recompensaId: Int,
     modifier: Modifier = Modifier
 ) {
-    var recompensa by remember(recompensaId) { mutableStateOf<Recompensa?>(null) }
-    var carregando by remember(recompensaId) { mutableStateOf(true) }
-    var falha by remember(recompensaId) { mutableStateOf<String?>(null) }
-    LaunchedEffect(recompensaId, estado.versaoDados) {
-        try {
-            falha = null
-            recompensa = estado.buscarRecompensaNoBanco(recompensaId)
-        } catch (cancelamento: CancellationException) {
-            throw cancelamento
-        } catch (erro: Exception) {
-            Log.e("HabitTracker", "Falha ao consultar detalhe", erro)
-            falha = "Não foi possível carregar os dados."
-        } finally { carregando = false }
-    }
-    if (carregando) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
+    if (uiState.carregando) {
         Text("Carregando…", modifier = Modifier.padding(20.dp))
         return
     }
-    if (falha != null) {
+    if (uiState.erro != null) {
         Column(Modifier.padding(20.dp)) {
-            Text(falha.orEmpty())
-            BotaoSecundario("Tentar novamente", { estado.recarregar() })
+            Text(uiState.erro.orEmpty())
+            BotaoSecundario("Tentar novamente", { viewModel.tentarNovamente() })
         }
         return
     }
+    val recompensa = estado.recompensaPorId(recompensaId)
     val atual = recompensa
     if (atual == null) {
         Column(
@@ -82,18 +68,20 @@ fun DetalheRecompensaScreen(
             BotaoSecundario(texto = "Voltar", aoClicar = { navController.popBackStack() })
         }
     } else {
-        DetalheRecompensaConteudo(navController, estado, atual, modifier)
+        DetalheRecompensaConteudo(navController, viewModel, atual, modifier)
     }
 }
 
 @Composable
 private fun DetalheRecompensaConteudo(
     navController: NavController,
-    estado: AppState,
+    viewModel: RecompensasViewModel,
     recompensa: Recompensa,
     modifier: Modifier
 ) {
-    var mensagem by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
+    val mensagem = uiState.mensagem
     val faltam = estado.minutosFaltando(recompensa)
     val progresso = estado.saldoMinutos / recompensa.custoMinutos.toFloat()
 
@@ -141,10 +129,7 @@ private fun DetalheRecompensaConteudo(
             texto = if (faltam == 0) "Resgatar" else "Faltam $faltam min",
             habilitado = faltam == 0,
             aoClicar = {
-                val custo = recompensa.custoMinutos
-                estado.resgatarRecompensa(recompensa.id) {
-                    mensagem = "✓ Resgatado! -$custo min do seu saldo."
-                }
+                viewModel.onResgatar(recompensa)
             }
         )
         if (mensagem.isNotEmpty()) {
@@ -154,36 +139,38 @@ private fun DetalheRecompensaConteudo(
                 color = MaterialTheme.colorScheme.primary
             )
         }
-        EdicaoDaRecompensa(estado, recompensa)
+        EdicaoDaRecompensa(viewModel, recompensa)
         com.example.habittracker.ui.components.BotaoRemover(
             "Remover recompensa", "A recompensa será excluída. Os resgates serão preservados."
-        ) { estado.removerRecompensa(recompensa.id) { navController.popBackStack() } }
+        ) { viewModel.removerRecompensa(recompensa.id) { navController.popBackStack() } }
         BotaoSecundario(texto = "Voltar", aoClicar = { navController.popBackStack() })
     }
 }
 
 @Composable
-private fun EdicaoDaRecompensa(estado: AppState, recompensa: Recompensa) {
-    var nome by remember(recompensa.id) { mutableStateOf(recompensa.nome) }
-    var custo by remember(recompensa.id) { mutableStateOf(recompensa.custoMinutos.toString()) }
-    var salvo by remember(recompensa.id) { mutableStateOf(false) }
+private fun EdicaoDaRecompensa(viewModel: RecompensasViewModel, recompensa: Recompensa) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
+    LaunchedEffect(recompensa.id) { viewModel.onEditar(recompensa) }
+    val form = uiState.edicao
+    val nome = form.nome
+    val custo = form.custoTexto
+    val salvo = form.salvo
     CartaoPadrao(Modifier.fillMaxWidth()) {
         Text("Editar recompensa", style = MaterialTheme.typography.titleMedium)
         androidx.compose.material3.OutlinedTextField(
-            value = nome, onValueChange = { nome = it; salvo = false },
+            value = nome, onValueChange = { viewModel.onNomeChange(it, true) },
             label = { Text("Nome da recompensa") }, modifier = Modifier.fillMaxWidth(), singleLine = true
         )
         androidx.compose.material3.OutlinedTextField(
-            value = custo, onValueChange = { custo = it.filter(Char::isDigit).take(4); salvo = false },
+            value = custo, onValueChange = { viewModel.onCustoChange(it, true) },
             label = { Text("Custo em minutos") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
         )
         BotaoPrincipal("Salvar alterações", {
-            estado.atualizarRecompensa(recompensa.copy(nome = nome, custoMinutos = custo.toIntOrNull() ?: 0)) {
-                salvo = true
-            }
-        }, habilitado = nome.isNotBlank() && (custo.toIntOrNull() ?: 0) > 0)
+            viewModel.onSalvar(true)
+        }, habilitado = form.valido)
         if (salvo) Text("✓ Alterações salvas", color = MaterialTheme.colorScheme.primary)
     }
 }

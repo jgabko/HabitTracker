@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,7 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.habittracker.data.AppState
+import com.example.habittracker.viewmodel.*
+import androidx.compose.runtime.collectAsState
 import com.example.habittracker.ui.components.BotaoSecundario
 import com.example.habittracker.ui.components.CartaoEstatistica
 import com.example.habittracker.ui.components.CartaoPadrao
@@ -36,7 +38,9 @@ private val ALTURA_MAXIMA_BARRA: Dp = 100.dp
  * desenhado só com Box (atividades por dia nos últimos 7 dias).
  */
 @Composable
-fun EstatisticasScreen(navController: NavController, estado: AppState, modifier: Modifier = Modifier) {
+fun EstatisticasScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
     val dias = ((estado.diaHoje - 6)..estado.diaHoje).toList()
     val contagens = dias.map { estado.contagemNoDia(it) }
     val maximo = (contagens.maxOrNull() ?: 0).coerceAtLeast(1)
@@ -59,7 +63,7 @@ fun EstatisticasScreen(navController: NavController, estado: AppState, modifier:
             CartaoEstatistica(modifier = Modifier.weight(1f), valor = "$media", rotulo = "Média diária de atividades")
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CartaoEstatistica(modifier = Modifier.weight(1f), valor = "${taxaDeConclusao(estado)}%", rotulo = "Taxa de conclusão")
+            CartaoEstatistica(modifier = Modifier.weight(1f), valor = "${estado.taxaDeConclusao()}%", rotulo = "Taxa de conclusão")
             CartaoEstatistica(modifier = Modifier.weight(1f), valor = "$melhorOfensiva dias", rotulo = "Melhor ofensiva")
         }
 
@@ -125,19 +129,4 @@ fun EstatisticasScreen(navController: NavController, estado: AppState, modifier:
 
         BotaoSecundario(texto = "Voltar", aoClicar = { navController.popBackStack() })
     }
-}
-
-/** Percentual de conclusões em relação ao previsto (dias agendados de cada hábito, do dia 1 até hoje). */
-private fun taxaDeConclusao(estado: AppState): Int {
-    var previstos = 0
-    var feitos = 0
-    estado.habitos.forEach { habito ->
-        for (dia in 1..estado.diaHoje) {
-            if (estado.diaDaSemana(dia) in habito.diasSemana) {
-                previstos++
-                if (estado.concluidoEm(habito.id, dia)) feitos++
-            }
-        }
-    }
-    return if (previstos == 0) 0 else (feitos * 100f / previstos).roundToInt()
 }

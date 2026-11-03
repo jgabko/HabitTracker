@@ -13,9 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -23,8 +20,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.habittracker.data.AppState
-import com.example.habittracker.model.TipoRegistro
+import com.example.habittracker.viewmodel.*
+import androidx.compose.runtime.collectAsState
+import com.example.habittracker.data.TipoRegistro
 import com.example.habittracker.navigation.Rotas
 import com.example.habittracker.ui.components.BarraProgresso
 import com.example.habittracker.ui.components.BotaoPrincipal
@@ -40,37 +38,29 @@ private val duracoes = listOf(15, 25, 45)
 
 /**
  * Foco (Pomodoro simulado): escolhe o hábito e a duração, toca em Iniciar e usa "+5 min"
- * para simular a passagem do tempo. Ao completar a duração, a sessão é registrada no AppState.
- * Não usa LaunchedEffect nem delay: o tempo só avança quando o usuário toca no botão.
+ * para simular a passagem do tempo. Ao completar a duração, a sessão é registrada pelo ViewModel.
+ * O tempo só avança quando o usuário toca no botão; o ViewModel guarda a simulação.
  *
  * habitoId vem da rota (-1 quando a aba Foco é aberta direto pela barra inferior).
  */
 @Composable
 fun FocoScreen(
     navController: NavController,
-    estado: AppState,
+    viewModel: HabitosViewModel,
     habitoId: Int,
     modifier: Modifier = Modifier
 ) {
-    // posição (na lista de hábitos) do hábito escolhido; começa no hábito vindo da rota, se houver
-    var posicaoHabito by remember { mutableStateOf(estado.habitos.indexOfFirst { it.id == habitoId }.coerceAtLeast(0)) }
-    var duracao by remember { mutableStateOf(25) }
-    var emAndamento by remember { mutableStateOf(false) }
-    var decorridos by remember { mutableStateOf(0) }
-    var concluida by remember { mutableStateOf(false) }
-
-    // Se a lista encolheu (hábito removido), volta para o primeiro
-    val posicaoValida = if (posicaoHabito < estado.habitos.size) posicaoHabito else 0
-    val habito = estado.habitos.getOrNull(posicaoValida)
-    val sessoesHoje = estado.registros.filter {
-        it.tipo == TipoRegistro.FOCO && it.dia == estado.diaHoje
-    }
-
-    fun resetar() {
-        emAndamento = false
-        concluida = false
-        decorridos = 0
-    }
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
+    androidx.compose.runtime.LaunchedEffect(habitoId) { viewModel.onAbrirFoco(habitoId) }
+    val foco = uiState.foco
+    val duracao = foco.duracao
+    val emAndamento = foco.emAndamento
+    val decorridos = foco.decorridos
+    val concluida = foco.concluida
+    val habito = estado.habitos.firstOrNull { it.id == foco.habitoId } ?: estado.habitos.firstOrNull()
+    val posicaoValida = estado.habitos.indexOf(habito).coerceAtLeast(0)
+    val sessoesHoje = estado.registros.filter { it.tipo == TipoRegistro.FOCO && it.dia == estado.diaHoje }
 
     Column(
         modifier = modifier
@@ -133,27 +123,21 @@ fun FocoScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "+${duracao / AppState.MINUTOS_FOCO_POR_MINUTO_LAZER} min de tempo livre · " +
-                            "+${duracao / AppState.MINUTOS_FOCO_POR_PONTO} pontos de Foco",
+                        text = "+${duracao / AppUiState.MINUTOS_FOCO_POR_MINUTO_LAZER} min de tempo livre · " +
+                            "+${duracao / AppUiState.MINUTOS_FOCO_POR_PONTO} pontos de Foco",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                BotaoPrincipal(texto = "Nova sessão", aoClicar = { resetar() })
+                BotaoPrincipal(texto = "Nova sessão", aoClicar = { viewModel.onResetarFoco() })
             } else if (emAndamento) {
                 BotaoPrincipal(
                     texto = "+$PASSO_SIMULADO min",
                     aoClicar = {
-                        decorridos = (decorridos + PASSO_SIMULADO).coerceAtMost(duracao)
-                        if (decorridos >= duracao) {
-                            estado.registrarSessaoFoco(habito.id, duracao) {
-                                emAndamento = false
-                                concluida = true
-                            }
-                        }
+                        viewModel.onAvancarFoco()
                     }
                 )
-                BotaoSecundario(texto = "Resetar", aoClicar = { resetar() })
+                BotaoSecundario(texto = "Resetar", aoClicar = { viewModel.onResetarFoco() })
                 Text(
                     text = "Simulação: cada toque em \"+$PASSO_SIMULADO min\" avança o tempo. " +
                         "Resetar cancela a sessão sem registrar.",
@@ -165,17 +149,17 @@ fun FocoScreen(
                     OpcoesChips(
                         rotulos = estado.habitos.map { "${it.emoji} ${it.nome}" },
                         selecionado = posicaoValida,
-                        aoSelecionar = { posicaoHabito = it }
+                        aoSelecionar = { viewModel.onSelecionarFoco(estado.habitos[it].id) }
                     )
                 }
                 SecaoCampo(titulo = "Duração") {
                     OpcoesChips(
                         rotulos = duracoes.map { "$it min" },
                         selecionado = duracoes.indexOf(duracao),
-                        aoSelecionar = { duracao = duracoes[it] }
+                        aoSelecionar = { viewModel.onDuracaoChange(duracoes[it]) }
                     )
                 }
-                BotaoPrincipal(texto = "Iniciar", aoClicar = { emAndamento = true })
+                BotaoPrincipal(texto = "Iniciar", aoClicar = { viewModel.onIniciarFoco() })
             }
 
             // Resumo do dia

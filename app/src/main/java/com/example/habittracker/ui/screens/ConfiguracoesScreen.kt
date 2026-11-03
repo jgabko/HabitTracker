@@ -16,14 +16,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.habittracker.data.AppState
+import com.example.habittracker.viewmodel.*
+import androidx.compose.runtime.collectAsState
 import com.example.habittracker.navigation.Rotas
 import com.example.habittracker.ui.components.BotaoSecundario
 import com.example.habittracker.ui.components.CartaoPadrao
@@ -33,9 +31,11 @@ import com.example.habittracker.ui.components.CartaoPadrao
  * "Sobre o app" (abre uma tela simples) e "Resetar dados de exemplo".
  */
 @Composable
-fun ConfiguracoesScreen(navController: NavController, estado: AppState, modifier: Modifier = Modifier) {
-    var confirmandoReset by remember { mutableStateOf(false) }
-    var resetFeito by remember { mutableStateOf(false) }
+fun ConfiguracoesScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
+    val confirmandoReset = uiState.confirmandoReset
+    val resetFeito = uiState.resetFeito
 
     Column(
         modifier = modifier
@@ -66,7 +66,7 @@ fun ConfiguracoesScreen(navController: NavController, estado: AppState, modifier
                 }
                 Switch(
                     checked = estado.notificacoesAtivas,
-                    onCheckedChange = { estado.alterarNotificacoes(it) },
+                    onCheckedChange = { viewModel.alterarNotificacoes(it) },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                         checkedTrackColor = MaterialTheme.colorScheme.primary
@@ -114,8 +114,7 @@ fun ConfiguracoesScreen(navController: NavController, estado: AppState, modifier
             BotaoSecundario(
                 texto = "Resetar dados de exemplo",
                 aoClicar = {
-                    resetFeito = false
-                    confirmandoReset = true
+                    viewModel.onConfirmarReset()
                 }
             )
             if (resetFeito) {
@@ -131,19 +130,18 @@ fun ConfiguracoesScreen(navController: NavController, estado: AppState, modifier
 
     if (confirmandoReset) {
         AlertDialog(
-            onDismissRequest = { confirmandoReset = false },
+            onDismissRequest = { viewModel.onCancelarReset() },
             title = { Text("Resetar dados?") },
             text = { Text("Hábitos, recompensas, histórico e saldo voltam aos dados de exemplo.") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        estado.restaurarDadosDeExemplo { resetFeito = true }
-                        confirmandoReset = false
+                        viewModel.onResetarDados()
                     }
                 ) { Text("Resetar") }
             },
             dismissButton = {
-                TextButton(onClick = { confirmandoReset = false }) { Text("Cancelar") }
+                TextButton(onClick = { viewModel.onCancelarReset() }) { Text("Cancelar") }
             }
         )
     }

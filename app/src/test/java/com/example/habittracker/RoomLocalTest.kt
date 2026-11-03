@@ -1,10 +1,12 @@
 package com.example.habittracker
 
+import kotlinx.coroutines.flow.first
+
 import android.content.Context
 import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import com.example.habittracker.data.*
-import com.example.habittracker.model.*
+import com.example.habittracker.data.*
 import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -39,19 +41,19 @@ class RoomLocalTest {
             banco = AppDatabase.criar(contexto, nome)
             assertEquals("Editado", banco.habitoDao().buscarPorId(hId)?.nome)
             assertEquals(TipoHabito.EVITAR, banco.habitoDao().buscarPorId(hId)?.tipo)
-            assertEquals(listOf(1,5), banco.habitoDao().buscarTodos().single().diasSemana)
-            assertEquals(3, banco.habitoDao().buscarTodos().single().ultimaRecaida)
-            assertEquals(30, banco.recompensaDao().buscarTodos().single().custoMinutos)
-            assertEquals(2, banco.recompensaDao().buscarTodos().single().vezesResgatada)
+            assertEquals(listOf(1,5), banco.habitoDao().buscarTodos().first().single().diasSemana)
+            assertEquals(3, banco.habitoDao().buscarTodos().first().single().ultimaRecaida)
+            assertEquals(30, banco.recompensaDao().buscarTodos().first().single().custoMinutos)
+            assertEquals(2, banco.recompensaDao().buscarTodos().first().single().vezesResgatada)
             assertEquals(50, banco.perfilDao().buscar()?.saldoMinutos)
             assertEquals(false, banco.perfilDao().buscar()?.notificacoesAtivas)
             banco.habitoDao().remover(checkNotNull(banco.habitoDao().buscarPorId(hId)))
             banco.recompensaDao().remover(checkNotNull(banco.recompensaDao().buscarPorId(rId)))
             banco.close()
             banco = AppDatabase.criar(contexto, nome)
-            assertTrue(banco.habitoDao().buscarTodos().isEmpty())
-            assertTrue(banco.recompensaDao().buscarTodos().isEmpty())
-            assertEquals("Persistência", banco.registroDao().buscarTodos().single().nomeHabito)
+            assertTrue(banco.habitoDao().buscarTodos().first().isEmpty())
+            assertTrue(banco.recompensaDao().buscarTodos().first().isEmpty())
+            assertEquals("Persistência", banco.registroDao().buscarTodos().first().single().nomeHabito)
             assertEquals(50, banco.perfilDao().buscar()?.saldoMinutos)
         } finally { banco.close(); contexto.deleteDatabase(nome) }
     }
@@ -64,7 +66,7 @@ class RoomLocalTest {
                     error("Rollback")
                 }
             } catch (_: IllegalStateException) { }
-            assertTrue(banco.recompensaDao().buscarTodos().isEmpty())
+            assertTrue(banco.recompensaDao().buscarTodos().first().isEmpty())
         } finally { banco.close(); contexto.deleteDatabase(nome) }
     }
 }

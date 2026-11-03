@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,8 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.habittracker.data.AppState
-import com.example.habittracker.model.TipoHabito
+import com.example.habittracker.viewmodel.*
+import androidx.compose.runtime.collectAsState
+import com.example.habittracker.data.TipoHabito
 import com.example.habittracker.navigation.Rotas
 import com.example.habittracker.ui.components.BotaoPrincipal
 import com.example.habittracker.ui.components.CartaoPadrao
@@ -44,7 +46,9 @@ private val letrasDosDias = listOf("D", "S", "T", "Q", "Q", "S", "S")
  * quantidade de atividades de cada dia. Não tem navegação entre meses nem toque no dia.
  */
 @Composable
-fun ProgressoScreen(navController: NavController, estado: AppState, modifier: Modifier = Modifier) {
+fun ProgressoScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
     val habitosEvitar = estado.habitos.filter { it.tipo == TipoHabito.EVITAR }
 
     Column(
@@ -75,7 +79,7 @@ fun ProgressoScreen(navController: NavController, estado: AppState, modifier: Mo
         }
 
         // Calendário (placeholder)
-        CalendarioPlaceholder(estado)
+        CalendarioPlaceholder(viewModel)
 
         // Dias sem, por hábito do tipo "evitar"
         TituloSecao(titulo = "Dias sem")
@@ -122,10 +126,12 @@ fun ProgressoScreen(navController: NavController, estado: AppState, modifier: Mo
 }
 
 @Composable
-private fun CalendarioPlaceholder(estado: AppState) {
+private fun CalendarioPlaceholder(viewModel: HabitosViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
     // Dia 1 do mês fictício cai numa segunda-feira, então a primeira semana começa com 1 célula vazia
     val vazios = estado.diaDaSemana(1)
-    val celulas: List<Int?> = List(vazios) { null } + (1..AppState.DIAS_NO_MES).toList()
+    val celulas: List<Int?> = List(vazios) { null } + (1..AppUiState.DIAS_NO_MES).toList()
     val semanas = celulas.chunked(7)
 
     CartaoPadrao(modifier = Modifier.fillMaxWidth()) {
@@ -135,7 +141,7 @@ private fun CalendarioPlaceholder(estado: AppState) {
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            text = "Mês fictício de ${AppState.DIAS_NO_MES} dias · mais verde = mais atividades",
+            text = "Mês fictício de ${AppUiState.DIAS_NO_MES} dias · mais verde = mais atividades",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -155,7 +161,7 @@ private fun CalendarioPlaceholder(estado: AppState) {
         semanas.forEach { semana ->
             Row(modifier = Modifier.fillMaxWidth()) {
                 semana.forEach { dia ->
-                    CelulaDia(modifier = Modifier.weight(1f), dia = dia, estado = estado)
+                    CelulaDia(modifier = Modifier.weight(1f), dia = dia, viewModel = viewModel)
                 }
                 // Completa a última semana para as células manterem a mesma largura
                 repeat(7 - semana.size) { Spacer(modifier = Modifier.weight(1f)) }
@@ -165,7 +171,9 @@ private fun CalendarioPlaceholder(estado: AppState) {
 }
 
 @Composable
-private fun CelulaDia(modifier: Modifier, dia: Int?, estado: AppState) {
+private fun CelulaDia(modifier: Modifier, dia: Int?, viewModel: HabitosViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
     val celula = modifier
         .aspectRatio(1f)
         .padding(2.dp)

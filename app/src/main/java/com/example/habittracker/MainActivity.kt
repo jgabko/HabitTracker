@@ -5,11 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.habittracker.data.AppDatabase
-import com.example.habittracker.data.AppState
+import com.example.habittracker.viewmodel.*
 import com.example.habittracker.navigation.AppNavigation
 import com.example.habittracker.ui.theme.HabitTrackerTheme
 
@@ -23,15 +21,13 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             HabitTrackerTheme {
-                // Estado único do app, criado uma vez e passado às telas
-                val estado: AppState = viewModel(factory = object : ViewModelProvider.Factory {
-                    @Suppress("UNCHECKED_CAST")
-                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                        require(modelClass.isAssignableFrom(AppState::class.java))
-                        return AppState(AppDatabase.getInstance(applicationContext)) as T
-                    }
-                })
-                AppNavigation(estado = estado)
+                val repository = androidx.compose.runtime.remember {
+                    com.example.habittracker.data.repository.DadosRepository(
+                        AppDatabase.getInstance(applicationContext))
+                }
+                val habitos: HabitosViewModel = viewModel(factory = HabitosViewModelFactory(repository))
+                val recompensas: RecompensasViewModel = viewModel(factory = RecompensasViewModelFactory(repository))
+                AppNavigation(viewModel = habitos, recompensasViewModel = recompensas)
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.example.habittracker
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
@@ -12,7 +13,8 @@ import java.io.File
 
 /** Percorre as telas originais do ZIP, sem substituir o visual por telas de teste. */
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
-@org.robolectric.annotation.Config(sdk = [35])
+@org.robolectric.annotation.Config(sdk = [35], qualifiers = "w411dp-h891dp-mdpi")
+@org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
 @org.robolectric.annotation.SQLiteMode(org.robolectric.annotation.SQLiteMode.Mode.LEGACY)
 class CrudInterfaceLocalTest {
     @get:Rule val tela = createAndroidComposeRule<MainActivity>()
@@ -48,17 +50,30 @@ class CrudInterfaceLocalTest {
             .performTextClearance()
         tela.onNode(hasSetTextAction() and hasText(rotulo)).performTextInput(valor)
     }
-    // Este teste JVM verifica a árvore e as ações reais do Compose.
-    // Não produz prints ou vídeo e não substitui o teste no aparelho.
+    // Capturas do Compose real no Android simulado pelo Robolectric.
+    // Não equivalem a uma execução no aparelho.
     private fun capturar(nome: String) {
         aguardarBanco()
-        tela.onRoot().assertExists()
+        lateinit var imagem: Bitmap
+        tela.runOnIdle {
+            val view = tela.activity.window.decorView
+            imagem = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+            view.draw(Canvas(imagem))
+        }
+        val pasta = File("build/outputs/evidencias-mvvm").apply { mkdirs() }
+        File(pasta, nome).outputStream().use {
+            check(imagem.compress(Bitmap.CompressFormat.PNG, 100, it))
+        }
     }
     @Test fun etapa01CrudPelasTelas() {
         capturar("00-inicio-trabalho2.png")
         clicar("Ver todos")
         clicar("Formulário completo")
         preencher("Nome do hábito", "Hábito do teste CRUD")
+        tela.activityRule.scenario.recreate()
+        aguardarBanco()
+        tela.onNode(hasSetTextAction() and hasText("Nome do hábito"))
+            .assertTextContains("Hábito do teste CRUD")
         clicar("Salvar hábito")
         localizar("Hábito do teste CRUD").assertExists()
         capturar("01-habito-adicionado.png")

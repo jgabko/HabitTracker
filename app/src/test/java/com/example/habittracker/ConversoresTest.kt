@@ -1,7 +1,7 @@
 package com.example.habittracker
 
 import com.example.habittracker.data.Conversores
-import com.example.habittracker.model.*
+import com.example.habittracker.data.*
 import org.junit.Assert.*
 import org.junit.Test
 

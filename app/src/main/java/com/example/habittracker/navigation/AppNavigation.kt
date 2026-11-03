@@ -32,7 +32,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.habittracker.data.AppState
+import com.example.habittracker.viewmodel.*
+import androidx.compose.runtime.collectAsState
 import com.example.habittracker.ui.screens.ConfiguracoesScreen
 import com.example.habittracker.ui.screens.DetalheHabitoScreen
 import com.example.habittracker.ui.screens.DetalheRecompensaScreen
@@ -73,10 +74,12 @@ private fun tituloDaRota(rota: String?): String = when (rota) {
 
 /**
  * Raiz do app: Scaffold com TopAppBar (voltar), NavigationBar (5 abas) e o NavHost com todas as rotas.
- * O estado (AppState) é criado na MainActivity e repassado às telas.
+ * Os ViewModels são criados com Factory na MainActivity e repassados às telas.
  */
 @Composable
-fun AppNavigation(estado: AppState) {
+fun AppNavigation(viewModel: HabitosViewModel, recompensasViewModel: RecompensasViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+    val recompensasUiState by recompensasViewModel.uiState.collectAsState()
     val navController = rememberNavController()
     val entradaAtual by navController.currentBackStackEntryAsState()
 
@@ -90,10 +93,11 @@ fun AppNavigation(estado: AppState) {
     val comVoltar = !ehAba
 
     val snackbarState = androidx.compose.runtime.remember { androidx.compose.material3.SnackbarHostState() }
-    androidx.compose.runtime.LaunchedEffect(estado.erro) {
-        estado.erro?.let {
+    androidx.compose.runtime.LaunchedEffect(uiState.erro, recompensasUiState.erro) {
+        (uiState.erro ?: recompensasUiState.erro)?.let {
             snackbarState.showSnackbar(it)
-            estado.limparErro()
+            viewModel.limparErro()
+            recompensasViewModel.limparErro()
         }
     }
 
@@ -120,34 +124,34 @@ fun AppNavigation(estado: AppState) {
             startDestination = Rotas.INICIO,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Rotas.INICIO) { InicioScreen(navController, estado) }
-            composable(Rotas.PROGRESSO) { ProgressoScreen(navController, estado) }
-            composable(Rotas.FOCO) { FocoScreen(navController, estado, -1) }
-            composable(Rotas.LOJA) { LojaScreen(navController, estado) }
-            composable(Rotas.PERFIL) { PerfilScreen(navController, estado) }
+            composable(Rotas.INICIO) { InicioScreen(navController, viewModel) }
+            composable(Rotas.PROGRESSO) { ProgressoScreen(navController, viewModel) }
+            composable(Rotas.FOCO) { FocoScreen(navController, viewModel, -1) }
+            composable(Rotas.LOJA) { LojaScreen(navController, recompensasViewModel) }
+            composable(Rotas.PERFIL) { PerfilScreen(navController, viewModel) }
 
             composable(Rotas.FOCO_DO_HABITO) { entrada ->
                 // Mesmo esquema da aula: o argumento chega como texto e é convertido para Int
                 val id = entrada.arguments?.getString("habitoId")?.toIntOrNull() ?: -1
-                FocoScreen(navController, estado, id)
+                FocoScreen(navController, viewModel, id)
             }
-            composable(Rotas.HABITOS) { HabitosScreen(navController, estado) }
-            composable(Rotas.NOVO_HABITO) { NovoHabitoScreen(navController, estado) }
+            composable(Rotas.HABITOS) { HabitosScreen(navController, viewModel) }
+            composable(Rotas.NOVO_HABITO) { NovoHabitoScreen(navController, viewModel) }
             composable(Rotas.DETALHE_HABITO) { entrada ->
                 // Mesmo esquema da aula: o argumento chega como texto e é convertido para Int
                 val id = entrada.arguments?.getString("id")?.toIntOrNull() ?: -1
-                DetalheHabitoScreen(navController, estado, id)
+                DetalheHabitoScreen(navController, viewModel, id)
             }
             composable(Rotas.DETALHE_RECOMPENSA) { entrada ->
                 val id = entrada.arguments?.getString("id")?.toIntOrNull() ?: -1
-                DetalheRecompensaScreen(navController, estado, id)
+                DetalheRecompensaScreen(navController, recompensasViewModel, id)
             }
-            composable(Rotas.ESTATISTICAS) { EstatisticasScreen(navController, estado) }
-            composable(Rotas.CONFIGURACOES) { ConfiguracoesScreen(navController, estado) }
+            composable(Rotas.ESTATISTICAS) { EstatisticasScreen(navController, viewModel) }
+            composable(Rotas.CONFIGURACOES) { ConfiguracoesScreen(navController, viewModel) }
             composable(Rotas.SOBRE) { SobreScreen(navController) }
         }
     }
-    if (estado.carregando || estado.salvando) {
+    if (uiState.carregando || uiState.salvando || recompensasUiState.carregando || recompensasUiState.salvando) {
         androidx.compose.foundation.layout.Box(
             modifier = Modifier.fillMaxSize().testTag("operacao-banco").background(MaterialTheme.colorScheme.background.copy(alpha = 0.65f))
                 .clickable(indication = null,

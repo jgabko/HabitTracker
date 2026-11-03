@@ -21,19 +21,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.habittracker.data.AppState
-import com.example.habittracker.model.Categoria
-import com.example.habittracker.model.Habito
+import com.example.habittracker.viewmodel.*
+import androidx.compose.runtime.collectAsState
+import com.example.habittracker.data.Categoria
+import com.example.habittracker.data.Habito
 import com.example.habittracker.navigation.Rotas
 import com.example.habittracker.ui.components.BotaoPrincipal
 import com.example.habittracker.ui.components.CartaoPadrao
@@ -47,22 +44,12 @@ import com.example.habittracker.ui.components.TituloSecao
  * Tocar no card abre o Detalhe do Hábito.
  */
 @Composable
-fun HabitosScreen(navController: NavController, estado: AppState, modifier: Modifier = Modifier) {
-    LaunchedEffect(Unit) { estado.carregarDados() }
-    var nome by remember { mutableStateOf("") }
-    var categoria by remember { mutableStateOf(Categoria.MENTE) }
-    var erro by remember { mutableStateOf(false) }
-
-    fun adicionar() {
-        if (nome.isBlank()) {
-            erro = true
-            return
-        }
-        estado.adicionarHabito(nome = nome, categoria = categoria, onSucesso = {
-            nome = ""
-            erro = false
-        })
-    }
+fun HabitosScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
+    val nome = uiState.rapido.nome
+    val categoria = uiState.rapido.categoria
+    val erro = uiState.rapido.nomeInvalido
 
     LazyColumn(
         modifier = modifier
@@ -75,13 +62,12 @@ fun HabitosScreen(navController: NavController, estado: AppState, modifier: Modi
             FormularioRapido(
                 nome = nome,
                 aoMudarNome = {
-                    nome = it
-                    erro = false
+                    viewModel.onNomeChange(it, "rapido")
                 },
                 erro = erro,
                 categoria = categoria,
-                aoMudarCategoria = { categoria = it },
-                aoAdicionar = { adicionar() }
+                aoMudarCategoria = { viewModel.onCategoriaChange(it, "rapido") },
+                aoAdicionar = { viewModel.onSalvar("rapido") }
             )
         }
         item {
@@ -103,8 +89,8 @@ fun HabitosScreen(navController: NavController, estado: AppState, modifier: Modi
                 CardHabito(
                     habito = habito,
                     concluido = estado.concluidoHoje(habito.id),
-                    aoAlternar = { estado.alternarConclusaoHoje(habito.id) },
-                    aoRemover = { estado.removerHabito(habito.id) },
+                    aoAlternar = { viewModel.alternarConclusaoHoje(habito.id) },
+                    aoRemover = { viewModel.removerHabito(habito.id) },
                     aoAbrir = { navController.navigate(Rotas.detalheHabito(habito.id)) }
                 )
             }

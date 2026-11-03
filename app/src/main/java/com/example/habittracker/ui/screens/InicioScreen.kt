@@ -22,23 +22,24 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.habittracker.data.AppState
-import com.example.habittracker.model.Habito
-import com.example.habittracker.model.TipoHabito
+import com.example.habittracker.viewmodel.*
+import androidx.compose.runtime.collectAsState
+import com.example.habittracker.data.Habito
+import com.example.habittracker.data.TipoHabito
 import com.example.habittracker.navigation.Rotas
 import com.example.habittracker.ui.components.BarraProgresso
 import com.example.habittracker.ui.components.CartaoPadrao
 import com.example.habittracker.ui.components.EmojiCirculo
 import com.example.habittracker.ui.components.TituloSecao
 
-// Índice = dia da semana (0 = domingo), igual ao AppState.diaDaSemana
+// Índice = dia da semana (0 = domingo), igual ao AppUiState.diaDaSemana
 private val nomesDosDias = listOf(
     "Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira",
     "Quinta-feira", "Sexta-feira", "Sábado"
@@ -49,8 +50,9 @@ private val nomesDosDias = listOf(
  * hábitos de hoje com check, "Ver todos" e botão "+".
  */
 @Composable
-fun InicioScreen(navController: NavController, estado: AppState, modifier: Modifier = Modifier) {
-    LaunchedEffect(Unit) { estado.carregarDados() }
+fun InicioScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
     val habitosHoje = estado.habitosDeHoje()
     val feitos = habitosHoje.count { estado.concluidoHoje(it.id) }
     val nomeDoDia = nomesDosDias[estado.diaDaSemana(estado.diaHoje)]
@@ -64,7 +66,7 @@ fun InicioScreen(navController: NavController, estado: AppState, modifier: Modif
         ) {
             item {
                 Cabecalho(
-                    subtitulo = "$nomeDoDia · dia ${estado.diaHoje} de ${AppState.DIAS_NO_MES}",
+                    subtitulo = "$nomeDoDia · dia ${estado.diaHoje} de ${AppUiState.DIAS_NO_MES}",
                     aoClicarConfiguracoes = { navController.navigate(Rotas.CONFIGURACOES) }
                 )
             }
@@ -98,7 +100,7 @@ fun InicioScreen(navController: NavController, estado: AppState, modifier: Modif
                         habito = habito,
                         sequencia = estado.sequenciaDe(habito),
                         concluido = estado.concluidoHoje(habito.id),
-                        aoAlternar = { estado.alternarConclusaoHoje(habito.id) },
+                        aoAlternar = { viewModel.alternarConclusaoHoje(habito.id) },
                         aoAbrir = { navController.navigate(Rotas.detalheHabito(habito.id)) }
                     )
                 }

@@ -1,6 +1,6 @@
-package com.example.habittracker.data
+package com.example.habittracker.viewmodel
 
-import com.example.habittracker.model.TipoHabito
+import com.example.habittracker.data.TipoHabito
 
 /** Uma medalha. Só leitura: é calculada a partir do histórico, não é guardada em lugar nenhum. */
 data class Conquista(
@@ -10,8 +10,8 @@ data class Conquista(
     val desbloqueada: Boolean
 )
 
-/** Lista de medalhas do app, com o status atual de cada uma (calculado a partir do AppState). */
-fun listaDeConquistas(estado: AppState): List<Conquista> {
+/** Lista de medalhas do app, com o status atual de cada uma (calculado a partir do snapshot da interface). */
+fun listaDeConquistas(estado: AppUiState): List<Conquista> {
     val resgates = estado.recompensas.sumOf { it.vezesResgatada }
     return listOf(
         Conquista("🌱", "Primeiro passo", "Conclua 1 hábito", estado.totalConclusoesGeral() >= 1),

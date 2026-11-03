@@ -1,9 +1,11 @@
 package com.example.habittracker
 
+import kotlinx.coroutines.flow.first
+
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.example.habittracker.data.*
-import com.example.habittracker.model.*
+import com.example.habittracker.data.*
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import org.junit.Assert.*
@@ -54,7 +56,7 @@ class MigracaoBancoTest {
             assertEquals(listOf(1,3,0), h.diasSemana)
             assertEquals(15, h.minutosRecompensa)
             assertEquals(1, banco.recompensaDao().buscarPorId(3)?.vezesResgatada)
-            val registros = banco.registroDao().buscarTodos()
+            val registros = banco.registroDao().buscarTodos().first()
             assertEquals(2, registros.size)
             assertEquals("Caminhar antigo", registros.first().nomeHabito)
             val perfil = checkNotNull(banco.perfilDao().buscar())
@@ -69,8 +71,8 @@ class MigracaoBancoTest {
         val banco = AppDatabase.criar(contexto, nome)
         try {
             assertNotNull(banco.perfilDao().buscar())
-            assertEquals(1, banco.habitoDao().buscarTodos().size)
-            assertEquals("Caminhar antigo", banco.habitoDao().buscarTodos().single().nome)
+            assertEquals(1, banco.habitoDao().buscarTodos().first().size)
+            assertEquals("Caminhar antigo", banco.habitoDao().buscarTodos().first().single().nome)
         } finally { banco.close(); contexto.deleteDatabase(nome) }
     }
 }

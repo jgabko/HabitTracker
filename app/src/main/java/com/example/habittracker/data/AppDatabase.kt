@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.room.*
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.example.habittracker.model.*
 
 @Database(entities = [Habito::class, Recompensa::class, Registro::class, Perfil::class], version = 2, exportSchema = true)
 @TypeConverters(Conversores::class)

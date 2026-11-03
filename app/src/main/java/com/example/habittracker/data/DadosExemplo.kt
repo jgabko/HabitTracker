@@ -1,6 +1,5 @@
 package com.example.habittracker.data
 
-import com.example.habittracker.model.*
 
 /** O mesmo conjunto de exemplos do ZIP do Trabalho 2. Usado apenas na primeira
  * instalação e na restauração explicitamente confirmada nas configurações. */

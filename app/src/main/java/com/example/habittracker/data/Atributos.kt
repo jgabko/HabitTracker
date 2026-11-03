@@ -1,4 +1,4 @@
-package com.example.habittracker.model
+package com.example.habittracker.data
 
 /** Os 5 atributos do avatar. */
 enum class Atributo(val rotulo: String, val emoji: String) {

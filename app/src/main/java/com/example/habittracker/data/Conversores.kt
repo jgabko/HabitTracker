@@ -1,7 +1,6 @@
 package com.example.habittracker.data
 
 import androidx.room.TypeConverter
-import com.example.habittracker.model.*
 
 class Conversores {
     @TypeConverter fun categoriaParaTexto(valor: Categoria): String = valor.name

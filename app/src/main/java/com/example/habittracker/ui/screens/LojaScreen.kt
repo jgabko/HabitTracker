@@ -22,12 +22,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -35,10 +31,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.habittracker.data.AppState
-import com.example.habittracker.data.Conquista
-import com.example.habittracker.data.listaDeConquistas
-import com.example.habittracker.model.Recompensa
+import com.example.habittracker.viewmodel.*
+import androidx.compose.runtime.collectAsState
+import com.example.habittracker.viewmodel.Conquista
+import com.example.habittracker.viewmodel.listaDeConquistas
+import com.example.habittracker.data.Recompensa
 import com.example.habittracker.navigation.Rotas
 import com.example.habittracker.ui.components.BotaoPrincipal
 import com.example.habittracker.ui.components.CartaoPadrao
@@ -47,9 +44,10 @@ import com.example.habittracker.ui.components.TituloSecao
 
 /** Loja: duas abas internas, Conquistas (medalhas, só leitura) e Loja (Lista 2 de recompensas). */
 @Composable
-fun LojaScreen(navController: NavController, estado: AppState, modifier: Modifier = Modifier) {
-    LaunchedEffect(Unit) { estado.carregarDados() }
-    var aba by remember { mutableStateOf(1) }
+fun LojaScreen(navController: NavController, viewModel: RecompensasViewModel, modifier: Modifier = Modifier) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
+    val aba = uiState.aba
 
     Column(modifier = modifier.fillMaxSize()) {
         TabRow(
@@ -60,15 +58,15 @@ fun LojaScreen(navController: NavController, estado: AppState, modifier: Modifie
             listOf("Conquistas", "Loja").forEachIndexed { indice, titulo ->
                 Tab(
                     selected = aba == indice,
-                    onClick = { aba = indice },
+                    onClick = { viewModel.onAbaChange(indice) },
                     text = { Text(titulo) }
                 )
             }
         }
         if (aba == 0) {
-            ConquistasAba(estado)
+            ConquistasAba(viewModel)
         } else {
-            RecompensasAba(navController, estado)
+            RecompensasAba(navController, viewModel)
         }
     }
 }
@@ -78,7 +76,9 @@ fun LojaScreen(navController: NavController, estado: AppState, modifier: Modifie
 // ----------------------------------------------------------------------
 
 @Composable
-private fun ConquistasAba(estado: AppState) {
+private fun ConquistasAba(viewModel: RecompensasViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
     val conquistas = listaDeConquistas(estado)
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
@@ -134,24 +134,14 @@ private fun CartaoConquista(conquista: Conquista) {
 // ----------------------------------------------------------------------
 
 @Composable
-private fun RecompensasAba(navController: NavController, estado: AppState) {
-    var nome by remember { mutableStateOf("") }
-    var custoTexto by remember { mutableStateOf("") }
-    var tentouAdicionar by remember { mutableStateOf(false) }
-
-    val custo = custoTexto.toIntOrNull()
-    val nomeInvalido = tentouAdicionar && nome.isBlank()
-    val custoInvalido = tentouAdicionar && (custo == null || custo <= 0)
-
-    fun adicionar() {
-        tentouAdicionar = true
-        if (nome.isBlank() || custo == null || custo <= 0) return
-        estado.adicionarRecompensa(nome = nome, custoMinutos = custo, onSucesso = {
-            nome = ""
-            custoTexto = ""
-            tentouAdicionar = false
-        })
-    }
+private fun RecompensasAba(navController: NavController, viewModel: RecompensasViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+    val estado = uiState.dados
+    val form = uiState.formulario
+    val nome = form.nome
+    val custoTexto = form.custoTexto
+    val nomeInvalido = form.nomeInvalido
+    val custoInvalido = form.custoInvalido
 
     LazyColumn(
         modifier = Modifier
@@ -185,7 +175,7 @@ private fun RecompensasAba(navController: NavController, estado: AppState) {
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
                     value = nome,
-                    onValueChange = { nome = it },
+                    onValueChange = { viewModel.onNomeChange(it) },
                     label = { Text("Nome da recompensa") },
                     singleLine = true,
                     isError = nomeInvalido,
@@ -194,7 +184,7 @@ private fun RecompensasAba(navController: NavController, estado: AppState) {
                 )
                 OutlinedTextField(
                     value = custoTexto,
-                    onValueChange = { custoTexto = it.filter(Char::isDigit).take(4) },
+                    onValueChange = { viewModel.onCustoChange(it) },
                     label = { Text("Custo em minutos") },
                     singleLine = true,
                     isError = custoInvalido,
@@ -203,7 +193,7 @@ private fun RecompensasAba(navController: NavController, estado: AppState) {
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                BotaoPrincipal(texto = "Adicionar", aoClicar = { adicionar() })
+                BotaoPrincipal(texto = "Adicionar", aoClicar = { viewModel.onSalvar() })
             }
         }
         item {
@@ -225,8 +215,8 @@ private fun RecompensasAba(navController: NavController, estado: AppState) {
                 CardRecompensa(
                     recompensa = recompensa,
                     faltam = estado.minutosFaltando(recompensa),
-                    aoResgatar = { estado.resgatarRecompensa(recompensa.id) },
-                    aoRemover = { estado.removerRecompensa(recompensa.id) },
+                    aoResgatar = { viewModel.resgatarRecompensa(recompensa.id) },
+                    aoRemover = { viewModel.removerRecompensa(recompensa.id) },
                     aoAbrir = { navController.navigate(Rotas.detalheRecompensa(recompensa.id)) }
                 )
             }
