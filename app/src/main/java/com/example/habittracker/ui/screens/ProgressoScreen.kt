@@ -48,7 +48,7 @@ private val letrasDosDias = listOf("D", "S", "T", "Q", "Q", "S", "S")
 @Composable
 fun ProgressoScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     val habitosEvitar = estado.habitos.filter { it.tipo == TipoHabito.EVITAR }
 
     Column(
@@ -128,10 +128,10 @@ fun ProgressoScreen(navController: NavController, viewModel: HabitosViewModel, m
 @Composable
 private fun CalendarioPlaceholder(viewModel: HabitosViewModel) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     // Dia 1 do mês fictício cai numa segunda-feira, então a primeira semana começa com 1 célula vazia
     val vazios = estado.diaDaSemana(1)
-    val celulas: List<Int?> = List(vazios) { null } + (1..AppUiState.DIAS_NO_MES).toList()
+    val celulas: List<Int?> = List(vazios) { null } + (1..HabitosUiState.DIAS_NO_MES).toList()
     val semanas = celulas.chunked(7)
 
     CartaoPadrao(modifier = Modifier.fillMaxWidth()) {
@@ -141,7 +141,7 @@ private fun CalendarioPlaceholder(viewModel: HabitosViewModel) {
             color = MaterialTheme.colorScheme.onSurface
         )
         Text(
-            text = "Mês fictício de ${AppUiState.DIAS_NO_MES} dias · mais verde = mais atividades",
+            text = "Mês fictício de ${HabitosUiState.DIAS_NO_MES} dias · mais verde = mais atividades",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -173,7 +173,7 @@ private fun CalendarioPlaceholder(viewModel: HabitosViewModel) {
 @Composable
 private fun CelulaDia(modifier: Modifier, dia: Int?, viewModel: HabitosViewModel) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     val celula = modifier
         .aspectRatio(1f)
         .padding(2.dp)

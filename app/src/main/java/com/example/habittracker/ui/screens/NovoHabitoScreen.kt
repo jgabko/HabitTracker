@@ -34,8 +34,8 @@ import com.example.habittracker.ui.components.SeletorDiasDaSemana
 @Composable
 fun NovoHabitoScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
-    val form = uiState.formulario
+    val estado = uiState
+    val form = uiState
     val nome = form.nome
     val tipo = form.tipo
     val categoria = form.categoria

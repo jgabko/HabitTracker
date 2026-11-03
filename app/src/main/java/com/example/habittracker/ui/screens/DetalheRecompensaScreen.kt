@@ -30,7 +30,7 @@ import com.example.habittracker.ui.components.CartaoEstatistica
 import com.example.habittracker.ui.components.CartaoPadrao
 import com.example.habittracker.ui.components.EmojiCirculo
 
-/** O id veio pela rota; a recompensa certa é buscada no AppUiState. */
+/** O id veio pela rota; a recompensa certa é buscada no HabitosUiState. */
 @Composable
 fun DetalheRecompensaScreen(
     navController: NavController,
@@ -39,16 +39,9 @@ fun DetalheRecompensaScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     if (uiState.carregando) {
         Text("Carregando…", modifier = Modifier.padding(20.dp))
-        return
-    }
-    if (uiState.erro != null) {
-        Column(Modifier.padding(20.dp)) {
-            Text(uiState.erro.orEmpty())
-            BotaoSecundario("Tentar novamente", { viewModel.tentarNovamente() })
-        }
         return
     }
     val recompensa = estado.recompensaPorId(recompensaId)
@@ -80,7 +73,7 @@ private fun DetalheRecompensaConteudo(
     modifier: Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     val mensagem = uiState.mensagem
     val faltam = estado.minutosFaltando(recompensa)
     val progresso = estado.saldoMinutos / recompensa.custoMinutos.toFloat()
@@ -150,26 +143,26 @@ private fun DetalheRecompensaConteudo(
 @Composable
 private fun EdicaoDaRecompensa(viewModel: RecompensasViewModel, recompensa: Recompensa) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     LaunchedEffect(recompensa.id) { viewModel.onEditar(recompensa) }
-    val form = uiState.edicao
+    val form = uiState
     val nome = form.nome
     val custo = form.custoTexto
     val salvo = form.salvo
     CartaoPadrao(Modifier.fillMaxWidth()) {
         Text("Editar recompensa", style = MaterialTheme.typography.titleMedium)
         androidx.compose.material3.OutlinedTextField(
-            value = nome, onValueChange = { viewModel.onNomeChange(it, true) },
+            value = nome, onValueChange = { viewModel.onNomeChange(it) },
             label = { Text("Nome da recompensa") }, modifier = Modifier.fillMaxWidth(), singleLine = true
         )
         androidx.compose.material3.OutlinedTextField(
-            value = custo, onValueChange = { viewModel.onCustoChange(it, true) },
+            value = custo, onValueChange = { viewModel.onCustoChange(it) },
             label = { Text("Custo em minutos") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
         )
         BotaoPrincipal("Salvar alterações", {
-            viewModel.onSalvar(true)
+            viewModel.onSalvar()
         }, habilitado = form.valido)
         if (salvo) Text("✓ Alterações salvas", color = MaterialTheme.colorScheme.primary)
     }

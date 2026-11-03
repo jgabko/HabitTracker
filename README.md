@@ -1,68 +1,41 @@
-# HabitTracker - Projeto 4
+# HabitTracker — Projeto 4
 
-Reorganização do mesmo aplicativo do Trabalho 3 com **MVVM, Repository e Flow**, seguindo o exemplo de Filmes do professor. As 12 telas, os campos, o tema, a navegação e as funcionalidades foram preservados.
+O mesmo aplicativo do Trabalho 3, organizado com o MVVM mostrado na aula de Filmes.
 
-## Executar
+## Como executar
 
-1. Abra esta pasta no Android Studio compatível com AGP 9.3.2.
-2. Configure o JDK 25 para o Gradle e o Android SDK Platform 37, com Build Tools 36.0.0.
-3. Sincronize o projeto e execute o módulo `app` em Android API 24 ou superior.
+Abra a pasta no Android Studio, configure JDK 25 e Android SDK 37 e execute o módulo `app`.
 
 ```powershell
 .\gradlew.bat :app:assembleDebug
 .\gradlew.bat :app:testDebugUnitTest
-.\gradlew.bat :app:assembleDebugAndroidTest
 ```
-
-Em Linux/macOS, use `./gradlew`. A configuração local do SDK fica em `local.properties`, fora do Git.
 
 ## Organização
 
-```text
-com.example.habittracker/
-├── MainActivity.kt
-├── data/                    Entity, DAO, Database e conversores
-│   └── repository/          Repository por Entity e coordenação de transações
-├── viewmodel/               ViewModels, UiStates, formulários e Factories
-├── ui/                      Telas, componentes e tema
-└── navigation/              Rotas e NavHost existentes
-```
+- `data`: Entity, DAO, Database e conversores.
+- `data.repository`: HabitoRepository, RecompensaRepository, RegistroRepository e PerfilRepository.
+- `viewmodel`: dois ViewModels, dois UiStates e duas Factories.
+- `ui`: as mesmas telas e componentes.
+- `navigation`: as mesmas rotas.
 
-```mermaid
-flowchart LR
-    Tela -->|evento| ViewModel
-    ViewModel --> Repository
-    Repository --> DAO
-    DAO --> Room
-    Room -->|Flow| Repository
-    Repository -->|Flow| ViewModel
-    ViewModel -->|StateFlow de UiState| Tela
-```
+As telas leem `uiState` com `collectAsState()` e chamam os métodos do ViewModel. Cada ViewModel coleta os Flows no `init`, igual ao exemplo do professor. `onSalvar` verifica o formulário e decide entre inserir e atualizar.
 
-- `HabitosViewModel` controla hábitos, formulários, conclusões, foco e configurações.
-- `RecompensasViewModel` controla cadastro, edição, exclusão e resgate de recompensas.
-- Cada um tem `_uiState` privado, `uiState` público e sua Factory.
-- Os quatro DAOs retornam `Flow<List<...>>` em `buscarTodos()`.
-- Há um Repository por Entity: Habito, Recompensa, Registro e Perfil.
-- As telas coletam o UiState e chamam eventos do ViewModel; não acessam DAOs nem criam coroutines para o banco.
+A versão simplificada usa campos diretos nos UiStates. Foram retirados o repositório coordenador, os formulários aninhados, a classe separada do foco, o `combine`, o `Mutex` e o executor genérico de ações. As transações do Room continuam nas operações de saldo e histórico.
 
-O Room continua sendo a fonte dos dados. A lista muda automaticamente após inserir, atualizar ou remover. O arquivo `habittracker.db`, a versão 2 e a migração 1 -> 2 permanecem. Conclusões, foco e resgates continuam transacionais. Apagar todos os cadastros não recria exemplos na próxima abertura.
+As telas, os cadastros, o foco simulado, as conquistas e a persistência foram mantidos. O banco continua na versão 2 com a migração já existente. O calendário continua demonstrativo, com hoje no dia 15.
 
-O calendário continua demonstrativo, com hoje no dia 15. O foco avança pelos mesmos passos de cinco minutos. A preferência de notificações continua sendo uma simulação.
+## Documentação
 
-## Processo, decisões e evidências
+- [Processo e decisões](docs/PROJETO4.md).
+- [Testes desta versão](docs/VALIDACAO_PROJETO4.md).
+- [Capturas no Robolectric](docs/evidencias/projeto4/README.md).
 
-- [Documentação do Projeto 4](docs/PROJETO4.md): antes/depois, pacotes, Repository, UiState, problemas encontrados e roteiro de apresentação.
-- [Validação desta versão](docs/VALIDACAO_PROJETO4.md): comandos, resultados e limites dos testes.
-- [Capturas desta versão](docs/evidencias/projeto4/README.md): imagens do teste de interface no Robolectric, identificadas como simulação.
-- [Roteiro de captura em Android](docs/ROTEIRO_DE_EVIDENCIAS.md): percurso e script já existentes para gravar em aparelho.
-- [README do Trabalho 3](docs/README_TRABALHO3.md): histórico da versão anterior; os relatórios antigos não validam o Projeto 4.
-
-Para executar em um dispositivo conectado:
+Para testar em um aparelho conectado:
 
 ```powershell
 .\gradlew.bat :app:connectedDebugAndroidTest
 .\scripts\testar-persistencia.ps1 -GravarVideo
 ```
 
-**Antes da entrega:** gravar o vídeo desta versão no aparelho, completar o relato real dos integrantes na documentação e conferir o prazo no Blackboard. Não foram inventados nomes, divisão do trio ou relatos pessoais.
+O vídeo em aparelho e o relato pessoal dos integrantes precisam ser feitos pelos autores antes da apresentação.

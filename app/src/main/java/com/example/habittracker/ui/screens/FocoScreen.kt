@@ -51,14 +51,14 @@ fun FocoScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     androidx.compose.runtime.LaunchedEffect(habitoId) { viewModel.onAbrirFoco(habitoId) }
-    val foco = uiState.foco
+    val foco = uiState
     val duracao = foco.duracao
     val emAndamento = foco.emAndamento
     val decorridos = foco.decorridos
     val concluida = foco.concluida
-    val habito = estado.habitos.firstOrNull { it.id == foco.habitoId } ?: estado.habitos.firstOrNull()
+    val habito = estado.habitos.firstOrNull { it.id == foco.habitoFoco } ?: estado.habitos.firstOrNull()
     val posicaoValida = estado.habitos.indexOf(habito).coerceAtLeast(0)
     val sessoesHoje = estado.registros.filter { it.tipo == TipoRegistro.FOCO && it.dia == estado.diaHoje }
 
@@ -77,7 +77,7 @@ fun FocoScreen(
             )
             BotaoPrincipal(
                 texto = "Criar hábito",
-                aoClicar = { navController.navigate(Rotas.NOVO_HABITO) }
+                aoClicar = { viewModel.onNovo(); navController.navigate(Rotas.NOVO_HABITO) }
             )
         } else {
             // Cronômetro
@@ -123,8 +123,8 @@ fun FocoScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "+${duracao / AppUiState.MINUTOS_FOCO_POR_MINUTO_LAZER} min de tempo livre · " +
-                            "+${duracao / AppUiState.MINUTOS_FOCO_POR_PONTO} pontos de Foco",
+                        text = "+${duracao / HabitosUiState.MINUTOS_FOCO_POR_MINUTO_LAZER} min de tempo livre · " +
+                            "+${duracao / HabitosUiState.MINUTOS_FOCO_POR_PONTO} pontos de Foco",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )

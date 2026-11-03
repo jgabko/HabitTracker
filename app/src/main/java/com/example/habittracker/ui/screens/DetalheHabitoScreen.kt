@@ -49,7 +49,7 @@ private val abreviacaoDias = listOf("dom", "seg", "ter", "qua", "qui", "sex", "s
 private fun textoDosDias(dias: List<Int>): String =
     if (dias.size == 7) "Todos os dias" else dias.sorted().joinToString(", ") { abreviacaoDias[it] }
 
-/** O id veio pela rota; o hábito certo é buscado no AppUiState. */
+/** O id veio pela rota; o hábito certo é buscado no HabitosUiState. */
 @Composable
 fun DetalheHabitoScreen(
     navController: NavController,
@@ -58,16 +58,9 @@ fun DetalheHabitoScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     if (uiState.carregando) {
         Text("Carregando…", modifier = Modifier.padding(20.dp))
-        return
-    }
-    if (uiState.erro != null) {
-        Column(Modifier.padding(20.dp)) {
-            Text(uiState.erro.orEmpty())
-            BotaoSecundario("Tentar novamente", { viewModel.tentarNovamente() })
-        }
         return
     }
     val habito = estado.habitoPorId(habitoId)
@@ -100,7 +93,7 @@ private fun DetalheConteudo(
     modifier: Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     val evitar = habito.tipo == TipoHabito.EVITAR
     val taxa = estado.taxaUltimos7Dias(habito.id)
 
@@ -195,9 +188,9 @@ private fun DetalheConteudo(
 @Composable
 private fun EdicaoDoHabito(viewModel: HabitosViewModel, habito: Habito) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     LaunchedEffect(habito.id) { viewModel.onEditar(habito) }
-    val form = uiState.edicao
+    val form = uiState
     val nome = form.nome
     val categoria = form.categoria
     val periodo = form.periodo
@@ -217,7 +210,7 @@ private fun EdicaoDoHabito(viewModel: HabitosViewModel, habito: Habito) {
             OutlinedTextField(
                 value = nome,
                 onValueChange = {
-                    viewModel.onNomeChange(it, "edicao")
+                    viewModel.onNomeChange(it)
                 },
                 label = { Text("Nome do hábito") },
                 singleLine = true,
@@ -230,7 +223,7 @@ private fun EdicaoDoHabito(viewModel: HabitosViewModel, habito: Habito) {
                     rotulos = Categoria.entries.map { "${it.emoji} ${it.rotulo}" },
                     selecionado = Categoria.entries.indexOf(categoria),
                     aoSelecionar = {
-                        viewModel.onCategoriaChange(Categoria.entries[it], "edicao")
+                        viewModel.onCategoriaChange(Categoria.entries[it])
                     }
                 )
             }
@@ -238,7 +231,7 @@ private fun EdicaoDoHabito(viewModel: HabitosViewModel, habito: Habito) {
                 SeletorDiasDaSemana(
                     selecionados = dias,
                     aoAlternar = { dia ->
-                        viewModel.onDiaAlternar(dia, "edicao")
+                        viewModel.onDiaAlternar(dia)
                     }
                 )
                 if (diasInvalidos) {
@@ -254,7 +247,7 @@ private fun EdicaoDoHabito(viewModel: HabitosViewModel, habito: Habito) {
                     rotulos = Periodo.entries.map { "${it.emoji} ${it.rotulo}" },
                     selecionado = Periodo.entries.indexOf(periodo),
                     aoSelecionar = {
-                        viewModel.onPeriodoChange(Periodo.entries[it], "edicao")
+                        viewModel.onPeriodoChange(Periodo.entries[it])
                     }
                 )
             }
@@ -270,7 +263,7 @@ private fun EdicaoDoHabito(viewModel: HabitosViewModel, habito: Habito) {
             BotaoSecundario(
                 texto = "Salvar alterações",
                 aoClicar = {
-                    viewModel.onSalvar("edicao")
+                    viewModel.onSalvar()
                 }
             )
             if (salvo) {

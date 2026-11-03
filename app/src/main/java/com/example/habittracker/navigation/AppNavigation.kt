@@ -127,7 +127,7 @@ fun AppNavigation(viewModel: HabitosViewModel, recompensasViewModel: Recompensas
             composable(Rotas.INICIO) { InicioScreen(navController, viewModel) }
             composable(Rotas.PROGRESSO) { ProgressoScreen(navController, viewModel) }
             composable(Rotas.FOCO) { FocoScreen(navController, viewModel, -1) }
-            composable(Rotas.LOJA) { LojaScreen(navController, recompensasViewModel) }
+            composable(Rotas.LOJA) { LojaScreen(navController, recompensasViewModel, viewModel) }
             composable(Rotas.PERFIL) { PerfilScreen(navController, viewModel) }
 
             composable(Rotas.FOCO_DO_HABITO) { entrada ->

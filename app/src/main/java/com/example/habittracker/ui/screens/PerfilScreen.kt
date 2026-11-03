@@ -37,7 +37,7 @@ import com.example.habittracker.ui.components.TituloSecao
 @Composable
 fun PerfilScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -62,7 +62,7 @@ fun PerfilScreen(navController: NavController, viewModel: HabitosViewModel, modi
                 modifier = Modifier.fillMaxWidth()
             )
             Text(
-                text = "${estado.pontosTotais() % AppUiState.PONTOS_POR_NIVEL} / ${AppUiState.PONTOS_POR_NIVEL} pts para o próximo nível",
+                text = "${estado.pontosTotais() % HabitosUiState.PONTOS_POR_NIVEL} / ${HabitosUiState.PONTOS_POR_NIVEL} pts para o próximo nível",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -95,7 +95,7 @@ fun PerfilScreen(navController: NavController, viewModel: HabitosViewModel, modi
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 // A barra enche até 50 pts (o mesmo valor de um nível)
-                BarraProgresso(progresso = pontos / AppUiState.PONTOS_POR_NIVEL.toFloat())
+                BarraProgresso(progresso = pontos / HabitosUiState.PONTOS_POR_NIVEL.toFloat())
             }
         }
 

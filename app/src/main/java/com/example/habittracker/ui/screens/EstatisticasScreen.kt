@@ -40,7 +40,7 @@ private val ALTURA_MAXIMA_BARRA: Dp = 100.dp
 @Composable
 fun EstatisticasScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     val dias = ((estado.diaHoje - 6)..estado.diaHoje).toList()
     val contagens = dias.map { estado.contagemNoDia(it) }
     val maximo = (contagens.maxOrNull() ?: 0).coerceAtLeast(1)

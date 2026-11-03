@@ -1,8 +1,9 @@
 {
   "data": "2026-11-03",
-  "base_commit": "b81e2981dde051bbc924cbe7b16e4bd6ad5c4582",
+  "versao": "Projeto 4 simplificado conforme as aulas",
+  "base_commit": "15cc314442a40aeb0c662e54950edf05c0abff7f",
   "totais": {
-    "testes": 14,
+    "testes": 15,
     "falhas": 0,
     "erros": 0,
     "ignorados": 0
@@ -52,12 +53,13 @@
     },
     {
       "classe": "com.example.habittracker.MvvmIntegracaoTest",
-      "testes": 6,
+      "testes": 7,
       "falhas": 0,
       "erros": 0,
       "ignorados": 0,
       "casos": [
         "exemplosCalculosEConquistasPreservados",
+        "doisResgatesSimultaneosNaoGastamOMesmoSaldo",
         "saldoConclusaoRecaidaFocoEResgateContinuamAtomicos",
         "formulariosValidacaoEEdicaoPermanecemNoUiState",
         "alteracaoExternaAoViewModelChegaPeloFlow",
@@ -77,10 +79,10 @@
       ]
     }
   ],
-  "apk_sha256": "ff474d564ad123b492bd88765f20d95c3272fafc1fbd662cc0ab22a9cee81e0c",
-  "esquema_room": "Idêntico ao esquema versão 2 do commit base",
+  "apk_sha256": "fdf2c8c80271015e39e133c5b845403b3ed4d1c9edc25eb322f631f6b718030c",
+  "esquema_room": "Versão 2 preservada sem alteração de schema",
   "capturas": {
-    "origem": "Robolectric, API 35, 411x891 dp, gráficos nativos",
+    "origem": "Robolectric API 35, 411x891 dp",
     "arquivos": [
       "00-inicio-mvvm.png",
       "01-habito-adicionado.png",
@@ -93,6 +95,6 @@
       "10-estatisticas-preservadas.png"
     ]
   },
-  "dispositivo": "Não executado: nenhum aparelho conectado",
-  "github": "Branch de implementação: codex/projeto4-mvvm, no mesmo repositório jgabko/HabitTracker"
+  "dispositivo": "Testes locais, sem execução em aparelho",
+  "github": "Entrega na main de jgabko/HabitTracker"
 }

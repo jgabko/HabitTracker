@@ -39,7 +39,7 @@ import com.example.habittracker.ui.components.CartaoPadrao
 import com.example.habittracker.ui.components.EmojiCirculo
 import com.example.habittracker.ui.components.TituloSecao
 
-// Índice = dia da semana (0 = domingo), igual ao AppUiState.diaDaSemana
+// Índice = dia da semana (0 = domingo), igual ao HabitosUiState.diaDaSemana
 private val nomesDosDias = listOf(
     "Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira",
     "Quinta-feira", "Sexta-feira", "Sábado"
@@ -52,7 +52,7 @@ private val nomesDosDias = listOf(
 @Composable
 fun InicioScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     val habitosHoje = estado.habitosDeHoje()
     val feitos = habitosHoje.count { estado.concluidoHoje(it.id) }
     val nomeDoDia = nomesDosDias[estado.diaDaSemana(estado.diaHoje)]
@@ -66,7 +66,7 @@ fun InicioScreen(navController: NavController, viewModel: HabitosViewModel, modi
         ) {
             item {
                 Cabecalho(
-                    subtitulo = "$nomeDoDia · dia ${estado.diaHoje} de ${AppUiState.DIAS_NO_MES}",
+                    subtitulo = "$nomeDoDia · dia ${estado.diaHoje} de ${HabitosUiState.DIAS_NO_MES}",
                     aoClicarConfiguracoes = { navController.navigate(Rotas.CONFIGURACOES) }
                 )
             }
@@ -108,7 +108,7 @@ fun InicioScreen(navController: NavController, viewModel: HabitosViewModel, modi
         }
 
         FloatingActionButton(
-            onClick = { navController.navigate(Rotas.NOVO_HABITO) },
+            onClick = { viewModel.onNovo(); navController.navigate(Rotas.NOVO_HABITO) },
             containerColor = MaterialTheme.colorScheme.secondary,
             contentColor = MaterialTheme.colorScheme.onSecondary,
             modifier = Modifier

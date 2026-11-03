@@ -46,10 +46,10 @@ import com.example.habittracker.ui.components.TituloSecao
 @Composable
 fun HabitosScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
-    val nome = uiState.rapido.nome
-    val categoria = uiState.rapido.categoria
-    val erro = uiState.rapido.nomeInvalido
+    val estado = uiState
+    val nome = uiState.nomeRapido
+    val categoria = uiState.categoriaRapida
+    val erro = uiState.erroRapido
 
     LazyColumn(
         modifier = modifier
@@ -62,12 +62,12 @@ fun HabitosScreen(navController: NavController, viewModel: HabitosViewModel, mod
             FormularioRapido(
                 nome = nome,
                 aoMudarNome = {
-                    viewModel.onNomeChange(it, "rapido")
+                    viewModel.onNomeRapidoChange(it)
                 },
                 erro = erro,
                 categoria = categoria,
-                aoMudarCategoria = { viewModel.onCategoriaChange(it, "rapido") },
-                aoAdicionar = { viewModel.onSalvar("rapido") }
+                aoMudarCategoria = { viewModel.onCategoriaRapidaChange(it) },
+                aoAdicionar = { viewModel.onAdicionarRapido() }
             )
         }
         item {
@@ -101,7 +101,7 @@ fun HabitosScreen(navController: NavController, viewModel: HabitosViewModel, mod
             TituloSecao(
                 titulo = "Precisa de mais opções?",
                 textoAcao = "Formulário completo",
-                aoClicarAcao = { navController.navigate(Rotas.NOVO_HABITO) }
+                aoClicarAcao = { viewModel.onNovo(); navController.navigate(Rotas.NOVO_HABITO) }
             )
         }
     }

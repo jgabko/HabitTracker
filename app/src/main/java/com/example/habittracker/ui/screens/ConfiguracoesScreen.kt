@@ -33,7 +33,7 @@ import com.example.habittracker.ui.components.CartaoPadrao
 @Composable
 fun ConfiguracoesScreen(navController: NavController, viewModel: HabitosViewModel, modifier: Modifier = Modifier) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     val confirmandoReset = uiState.confirmandoReset
     val resetFeito = uiState.resetFeito
 

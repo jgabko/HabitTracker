@@ -44,9 +44,12 @@ import com.example.habittracker.ui.components.TituloSecao
 
 /** Loja: duas abas internas, Conquistas (medalhas, só leitura) e Loja (Lista 2 de recompensas). */
 @Composable
-fun LojaScreen(navController: NavController, viewModel: RecompensasViewModel, modifier: Modifier = Modifier) {
+fun LojaScreen(navController: NavController, viewModel: RecompensasViewModel, habitosViewModel: HabitosViewModel, modifier: Modifier = Modifier) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (uiState.recompensaEmEdicao != null) viewModel.onNovo()
+    }
     val aba = uiState.aba
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -64,7 +67,7 @@ fun LojaScreen(navController: NavController, viewModel: RecompensasViewModel, mo
             }
         }
         if (aba == 0) {
-            ConquistasAba(viewModel)
+            ConquistasAba(habitosViewModel)
         } else {
             RecompensasAba(navController, viewModel)
         }
@@ -76,9 +79,9 @@ fun LojaScreen(navController: NavController, viewModel: RecompensasViewModel, mo
 // ----------------------------------------------------------------------
 
 @Composable
-private fun ConquistasAba(viewModel: RecompensasViewModel) {
+private fun ConquistasAba(viewModel: HabitosViewModel) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
+    val estado = uiState
     val conquistas = listaDeConquistas(estado)
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
@@ -136,8 +139,8 @@ private fun CartaoConquista(conquista: Conquista) {
 @Composable
 private fun RecompensasAba(navController: NavController, viewModel: RecompensasViewModel) {
     val uiState by viewModel.uiState.collectAsState()
-    val estado = uiState.dados
-    val form = uiState.formulario
+    val estado = uiState
+    val form = uiState
     val nome = form.nome
     val custoTexto = form.custoTexto
     val nomeInvalido = form.nomeInvalido

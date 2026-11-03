@@ -11,7 +11,7 @@ data class Conquista(
 )
 
 /** Lista de medalhas do app, com o status atual de cada uma (calculado a partir do snapshot da interface). */
-fun listaDeConquistas(estado: AppUiState): List<Conquista> {
+fun listaDeConquistas(estado: HabitosUiState): List<Conquista> {
     val resgates = estado.recompensas.sumOf { it.vezesResgatada }
     return listOf(
         Conquista("🌱", "Primeiro passo", "Conclua 1 hábito", estado.totalConclusoesGeral() >= 1),
